@@ -40,8 +40,8 @@ df_loc['filename'] = df_loc['filename'].apply(lambda x: x.split('/')[-1])
 control_df = copy.deepcopy(df[df['taxonomy'] == 'C'])
 antidep_df = copy.deepcopy(df[df['taxonomy'] != 'C'])
 
-EEG_STAGE_DIR = "/Users/alimirz/mnt_all/data/netmit/wifall/ADetect/data"
-STAGE_PREDICTION_DIR = "/Users/alimirz/mnt_all/data/netmit/wifall/chaoli/best_stage_predictions"
+EEG_STAGE_DIR = "/data/netmit/wifall/ADetect/data"
+STAGE_PREDICTION_DIR = "/data/netmit/wifall/chaoli/best_stage_predictions"
 for idx, row in tqdm(control_df.iterrows()):
     # if idx % 10 != 0:
     #     continue 
