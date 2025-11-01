@@ -10,11 +10,15 @@ from scipy import stats
 import dataframe_image as dfi
 
 SIMULATED = False
-if SIMULATED:
-    df = pd.read_csv('SIMULATED_figure_draft_v16_rem_latency.csv')
-else:
-    df = pd.read_csv('figure_draft_v16_rem_latency.csv')
+# if SIMULATED:
+#     df = pd.read_csv('SIMULATED_figure_draft_v16_rem_latency.csv')
+# else:
 
+df = pd.read_csv('../data/figure_draft_v16_rem_latency.csv')
+# bp() 
+# df = pd.read_csv('../data/master_dataset.csv')
+# df = df[['filename', 'rem_latency_gt', 'rem_latency_pred', 'sws_duration_gt', 'sws_duration_pred', 'rem_duration_gt', 'rem_duration_pred', 'sleep_efficiency_gt', 'sleep_efficiency_pred', 'label']]
+bp() 
 control_df = df[df['label'] == 0]
 antidep_df = df[df['label'] == 1]
 

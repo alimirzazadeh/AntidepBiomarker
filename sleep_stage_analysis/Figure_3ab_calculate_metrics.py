@@ -137,5 +137,5 @@ for idx, row in antidep_df.iterrows():
 
 control_df['label'] = 0
 antidep_df['label'] = 1
-pd.concat([control_df[['filename', 'rem_latency_gt', 'rem_latency_pred', 'label']], antidep_df[['filename', 'rem_latency_gt', 'rem_latency_pred', 'label']]]).to_csv('figure_draft_v16_rem_latency.csv', index=False)
+pd.concat([control_df, antidep_df]).to_csv('figure_draft_v16_rem_latency.csv', index=False)
 
