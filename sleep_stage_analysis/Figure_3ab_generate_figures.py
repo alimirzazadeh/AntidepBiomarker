@@ -8,17 +8,19 @@ import seaborn as sns
 from scipy.stats import pearsonr
 from scipy import stats
 import dataframe_image as dfi
-
+import sys 
+import matplotlib.patches as mpatches
 SIMULATED = False
-# if SIMULATED:
-#     df = pd.read_csv('SIMULATED_figure_draft_v16_rem_latency.csv')
-# else:
+MASTER_DATASET = False
+if MASTER_DATASET and SIMULATED:
+    df = pd.read_csv('../data/SIMULATED_master_dataset.csv')
+elif MASTER_DATASET:
+    df = pd.read_csv('../data/master_dataset.csv')
+elif SIMULATED:
+    df = pd.read_csv('SIMULATED_figure_draft_v16_rem_latency.csv')
+else:
+    df = pd.read_csv('../data/figure_draft_v16_rem_latency.csv')
 
-df = pd.read_csv('../data/figure_draft_v16_rem_latency.csv')
-# bp() 
-# df = pd.read_csv('../data/master_dataset.csv')
-# df = df[['filename', 'rem_latency_gt', 'rem_latency_pred', 'sws_duration_gt', 'sws_duration_pred', 'rem_duration_gt', 'rem_duration_pred', 'sleep_efficiency_gt', 'sleep_efficiency_pred', 'label']]
-bp() 
 control_df = df[df['label'] == 0]
 antidep_df = df[df['label'] == 1]
 
@@ -35,7 +37,7 @@ def calculate_pval_effect_size(x,y,equal_var=False):
 
 import matplotlib.pyplot as plt 
 if True:
-    fig, ax = plt.subplots(1, 4, figsize=(20, 4))
+    fig, ax = plt.subplots(2, 2, figsize=(10, 8))
     for i, name in enumerate(['rem_latency', 'sws_duration', 'rem_duration', 'sleep_efficiency']):
         x1 = control_df[name + '_gt'] / 2
         x2 = control_df[name + '_pred'] / 2
@@ -63,21 +65,30 @@ if True:
         data = []
         labels = []
         data.extend(x1)
-        labels.extend(['GT\nControl'] * len(x1))
+        labels.extend(['Control\n'] * len(x1))
         data.extend(y1)
-        labels.extend(['GT\nAntidep'] * len(y1))
+        labels.extend(['Antidep\n'] * len(y1))
         data.extend(x2)
-        labels.extend(['Pred\nControl'] * len(x2))
+        labels.extend(['Control'] * len(x2))
         data.extend(y2)
-        labels.extend(['Pred\nAntidep'] * len(y2))
+        labels.extend(['Antidep'] * len(y2))
         
         # Create DataFrame for seaborn
         plot_df = pd.DataFrame({'value': data, 'group': labels})
         
         # Create seaborn boxplot
-        sns.boxplot(data=plot_df, x='group', y='value', ax=ax[i], showfliers=False, 
+        sns.boxplot(data=plot_df, x='group', y='value', ax=ax[i // 2, i % 2], showfliers=False, 
                    palette=['royalblue', 'coral', 'royalblue', 'coral'])
         
+        legend_patches = [
+            mpatches.Patch(color='royalblue', label='Control'),
+            mpatches.Patch(color='coral', label='Antidepressant')
+        ]
+        ## turn off the tick labels 
+        ax[i // 2, i % 2].set_xticklabels(['', '', '', ''])
+        if i == 0:
+            ax[i // 2, i % 2].legend(handles=legend_patches)
+            
         # Add text annotations for significance and effect size
         # Function to get significance stars
         def get_significance_stars(pval):
@@ -103,8 +114,10 @@ if True:
                 return 'ne'
         
         # Get current y limits for positioning
-        y_min, y_max = ax[i].get_ylim()
-        y_pos = y_max - (y_max - y_min) * 0.05  # Position above the boxes
+        y_min, y_max = ax[i // 2, i % 2].get_ylim()
+        y_pos = y_max - (y_max - y_min) * 0.15  # Position above the boxes
+        ax[i//2,i%2].text(0.5,y_min - (y_max - y_min) * 0.13,'Expert Annotated\n(EEG)', ha='center')
+        ax[i//2,i%2].text(2.5,y_min - (y_max - y_min) * 0.13,'AI Predicted\n(Respiration)', ha='center')
         
         # Add annotations for GT comparison (between positions 0 and 1)
         stars_gt = get_significance_stars(pval_gt)
@@ -113,7 +126,7 @@ if True:
         
         if annotation_gt:
             # Position between GT Control (0) and GT Antidep (1)
-            ax[i].text(0.5, y_pos, annotation_gt, 
+            ax[i // 2, i % 2].text(0.5, y_pos, annotation_gt, 
                       ha='center', va='bottom', fontsize=10, color='black')
         
         # Add annotations for Pred comparison (between positions 2 and 3)
@@ -123,17 +136,21 @@ if True:
         
         if annotation_pred:
             # Position between Pred Control (2) and Pred Antidep (3)
-            ax[i].text(2.5, y_pos, annotation_pred, 
+            ax[i // 2, i % 2].text(2.5, y_pos, annotation_pred, 
                       ha='center', va='bottom', fontsize=10, color='black')
         
         # Adjust y limits to accommodate annotations
-        ax[i].set_ylim(y_min, y_max + (y_max - y_min) * 0.15)
+        ax[i // 2, i % 2].set_ylim(y_min, y_max + (y_max - y_min) * 0.15)
         
-        ax[i].set_title(name.replace('_', ' ').title())
-        ax[i].set_ylabel('')
-        ax[i].set_xlabel('')
-    ax[0].set_ylabel('Minutes')
+        ax[i // 2, i % 2].set_title(name.replace('_', ' ').title().replace('Rem Latency', 'Rapid Eye Momement (REM) Latency').replace('Sws', 'Slow Wave Sleep (SWS)').replace('Rem','REM'))
+        ax[i // 2, i % 2].set_ylabel('')
+        ax[i // 2, i % 2].set_xlabel('')
+    ax[0, 0].set_ylabel('Minutes')
+    ax[1, 0].set_ylabel('Minutes')
+    ax[0, 1].set_ylabel('Minutes')
+    ax[1, 1].set_ylabel('Proportion')
     plt.tight_layout()
+
     plt.savefig('Figure_3a.png', dpi=300)
 
 ## now get the correlation between the ground truth and predicted features 
@@ -163,19 +180,22 @@ if True:
         control_pvalue = pearsonr(x1, x2)[1]
         antidep_pvalue = pearsonr(y1, y2)[1]
         # Store results
-        features.append(name.replace('_', ' ').title())
+        features.append(name.replace('_', ' ').title().replace('Rem','REM').replace('Sws','SWS'))
         control_correlations.append(control_corr)
         antidep_correlations.append(antidep_corr)
         control_pvalues.append(control_pvalue)
         antidep_pvalues.append(antidep_pvalue)
     # Create DataFrame for nice table display
+    
     correlation_df = pd.DataFrame({
         'Feature': features,
         'Pearsons r': [f'{corr:.3f}' for corr in control_correlations],
-        'p': [f'{p:.2e}' for p in control_pvalues],
+        'p': [p for p in control_pvalues],
         'Pearsons r ': [f'{corr:.3f}' for corr in antidep_correlations], 
-        'p ': [f'{p:.2e}' for p in antidep_pvalues],
+        'p ': [p for p in antidep_pvalues],
     })
+    correlation_df.iloc[:,2] = correlation_df.iloc[:,2].apply(lambda x: 'p<1e-10' if x < 1e-10 else f'p={x:.2e}')
+    correlation_df.iloc[:,4] = correlation_df.iloc[:,4].apply(lambda x: 'p<1e-10' if x < 1e-10 else f'p={x:.2e}')
 
     # Display the table
     print("\n" + "="*60)
@@ -205,6 +225,6 @@ if True:
                          .hide(axis="index")  # hide index if not needed
 
     # Save as PNG
-    dfi.export(styled_df, "Figure_3b.png")
+    dfi.export(styled_df, "Figure_3b.png", dpi=600) ## increase the resolution 
     
 
