@@ -141,19 +141,28 @@ def main():
         gt_files = os.listdir(gt_dir)
         pred_files = os.listdir(pred_dir)
         all_files = np.intersect1d(gt_files, pred_files)
-        all_errors = []
+        all_errors_l1 = []
+        all_errors_l2 = []
+        all_errors_percent_diff = []
         for file in tqdm(all_files):
             error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir)
-            all_errors.append(error)
-        all_errors = np.stack(all_errors)
-        mean_error = np.mean(all_errors, 0)
-        std_error = np.std(all_errors, 0)
-        plt.plot(mean_error, label=dataset)
-        plt.fill_between(np.arange(0, mean_error.shape[0]), mean_error - std_error, mean_error + std_error, alpha=0.2)
-        plt.legend()
-        plt.show()
+            all_errors_l1.append(error)
+            error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir, method='l2')
+            all_errors_l2.append(error)
+            error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir, method='percent_diff')
+            all_errors_percent_diff.append(error)
+        all_errors_l1 = np.stack(all_errors_l1)
+        all_errors_l2 = np.stack(all_errors_l2)
+        all_errors_percent_diff = np.stack(all_errors_percent_diff)
+        mean_error_l1 = np.mean(all_errors_l1, 0)
+        std_error_l1 = np.std(all_errors_l1, 0)
+        mean_error_l2 = np.mean(all_errors_l2, 0)
+        std_error_l2 = np.std(all_errors_l2, 0)
+        mean_error_percent_diff = np.mean(all_errors_percent_diff, 0)
+        std_error_percent_diff = np.std(all_errors_percent_diff, 0)
         bp() 
-        print('--------------------------------')
+        plt.plot(mean_error_l1, label='L1')
+        plt.fill_between(np.arange(0, mean_error_l1.shape[0]), mean_error_l1 - std_error_l1, mean_error_l1 + std_error_l1, alpha=0.2)
         
 if __name__ == '__main__':
     main()
