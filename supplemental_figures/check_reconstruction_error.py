@@ -26,7 +26,6 @@ def mean_percent_difference(observed, expected):
     b = b - bmin
     a = a / (bmax - bmin)
     b = b / (bmax - bmin)
-    bp() 
     mean_a = np.nanmean(a, 0)
     mean_b = np.nanmean(b, 0)
     denom = mean_b
@@ -121,7 +120,7 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
     elif method == 'l2':
         error = calculate_l2_error(gt.mean(1), pred.mean(1))
     elif method == 'percent_diff':
-        error = mean_percent_difference(gt, pred)
+        error = mean_percent_difference(gt.T, pred.T)
     return error
 
 def main():
