@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from ipdb import set_trace as bp 
-
+import sys 
 ## note: missing cfs in the rem latency csv, need to address 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,6 +12,7 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.stats import pearsonr
 from sklearn.manifold import TSNE
 from scipy.stats import ttest_ind
+import pickle
 def tsne_progression_plot(
     X,                      # (n, 2) t-SNE or UMAP coordinates
     y,                      # (n,) progression variable
@@ -127,8 +128,8 @@ def tsne_progression_plot(
 
 df = pd.read_csv('../../data/inference_v6emb_3920_all.csv')
 df['filename'] = df['filename'].apply(lambda x: x.split('/')[-1])
-df_latency = pd.read_csv('../../data/figure_draft_v15_rem_latency.csv')
-df_powers = pd.read_csv('so_beta_powers_sleep_only.csv')
+df_latency = pd.read_csv('../../data/figure_draft_v16_rem_latency.csv')
+df_powers = pd.read_csv('../../data/so_beta_powers_sleep_only.csv')
 df_powers['filename'] = df_powers['concat_names'].apply(lambda x: x.split('/')[-1])
 
 
@@ -231,6 +232,8 @@ def get_x_y(fold, df, df_latency, df_powers, clip=True):
         df_0 = df[(df['fold'] == fold) ] # * (df['label'] == 1)]
     else:
         df_0 = df
+    df_latency = df_latency[['filename', 'rem_latency_gt']]
+    df_powers = df_powers[['filename', 'concat_beta_powers', 'concat_so_powers']]
     df_latency.dropna(inplace=True)
     df_powers.dropna(inplace=True)
     print('Shape of df_latency: ', df_latency.shape)
@@ -321,8 +324,6 @@ for fold in range(4):
     mantel_r, p_value = mantel_correlation(x, y)
     print(f"Rem Latency Mantel correlation: {mantel_r:.3f}, p-value: {p_value:.3f}")
 
-    
-    
     tsne = TSNE(n_components=2, random_state=42, perplexity=300, init='pca')
     # x = pls_correlation(x, y)
     x_tsne = tsne.fit_transform(x)
@@ -331,5 +332,7 @@ for fold in range(4):
     tsne_progression_plot(x_tsne, y2, ax=ax2[fold, 0], method='smooth', cmap='magma', ticks = np.arange(0, 1, 0.2))
 
 plt.tight_layout()
+plt.show()
+sys.exit()
 plt.savefig('tsne_remlatency_overlay_v2.png', dpi=300, bbox_inches='tight')
 

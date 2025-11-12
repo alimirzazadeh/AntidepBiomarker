@@ -1,0 +1,159 @@
+import numpy as np
+import os 
+from tqdm import tqdm
+from ipdb import set_trace as bp
+import matplotlib.pyplot as plt
+# gt_path = '/data/netmit/sleep_lab/filtered/c4_m1_multitaper/mros1'
+gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
+pred_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/mage/cv_0'
+
+def calculate_l1_error(gt, pred):
+    return np.abs(gt - pred)
+
+def calculate_l2_error(gt, pred):
+    return np.square(gt - pred)
+
+def mean_percent_difference(observed, expected):
+    a = observed
+    b = expected
+    b75 = np.nanpercentile(b, 75, 0) 
+    b25 = np.nanpercentile(b, 25, 0)
+    b_iqr = 1.5 * (b75 - b25)
+    bmin = b25 - 1.5 * b_iqr
+    bmax = b75 + 1.5 * b_iqr
+    
+    a = a - bmin
+    b = b - bmin
+    a = a / (bmax - bmin)
+    b = b / (bmax - bmin)
+    bp() 
+    mean_a = np.nanmean(a, 0)
+    mean_b = np.nanmean(b, 0)
+    denom = mean_b
+    
+    return (mean_a - mean_b) / denom * 100
+
+def normalize_gt(eeg, dataset ):
+    aligned_stats = {
+    "bwh": {
+        "mean": -119.81631919400787,
+        "std": 9.759356123639623
+    },
+    "ccshs": {
+        "mean": -121.27895213781851,
+        "std": 9.40345097820264
+    },
+    "cfs": {
+        "mean": -121.19160358663257,
+        "std": 9.59165062387462
+    },
+    "chat1": {
+        "mean": -113.50761420277698,
+        "std": 9.08179307747247
+    },
+    "chat2": {
+        "mean": -114.89264007606901,
+        "std": 9.716837725098982
+    },
+    "chat3": {
+        "mean": -116.87718779950092,
+        "std": 9.43450530792485
+    },
+    "mesa": {
+        "mean": -122.68688353498257,
+        "std": 9.60216508752495
+    },
+    "mgh": {
+        "mean": -119.62848254989814,
+        "std": 9.871857334916152
+    },
+    "mgh2": {
+        "mean": -120.55325045281961,
+        "std": 9.842009745631655
+    },
+    "mros1": {
+        "mean": -120.98222843034381,
+        "std": 9.363104704238623
+    },
+    "mros2": {
+        "mean": -118.22438446922463,
+        "std": 10.073216867662019
+    },
+    "p18c": {
+        "mean": -120.74857898328052,
+        "std": 10.054891007302812
+    },
+    "shhs1": {
+        "mean": -121.10152070581054,
+        "std": 9.97620536159769
+    },
+    "shhs2": {
+        "mean": -121.54034787678135,
+        "std": 9.872548910735638
+    },
+    "sof": {
+        "mean": -119.19408423981945,
+        "std": 10.18193411752617
+    },
+    "stages": {
+        "mean": -118.39168242635253,
+        "std": 9.337185496757476
+    },
+    "wsc": {
+        "mean": -119.98596507662205,
+        "std": 9.550418675015477
+    }
+    }
+    target_mean = -120.
+    target_std = 7.
+    eeg = (eeg - aligned_stats[dataset]['mean']) / aligned_stats[dataset]['std'] * target_std + target_mean
+    eeg = np.clip(eeg, -140, -90)
+    eeg = ((eeg + 140) / 50).astype(np.float32)
+    eeg = (eeg - 0.5) / 0.5
+    return eeg
+
+def calculate_reconstruction_error(file, dataset, method:str='l1'):
+    gt = np.load(os.path.join(gt_path, file))['data']
+    pred = np.load(os.path.join(pred_path, file))['pred']
+    gt = normalize_gt(gt, dataset)
+    if method == 'l1':
+        error = calculate_l1_error(gt.mean(1), pred.mean(1))
+    elif method == 'l2':
+        error = calculate_l2_error(gt.mean(1), pred.mean(1))
+    elif method == 'percent_diff':
+        error = mean_percent_difference(gt, pred)
+    return error
+
+def main():
+    for dataset in ['shhs1', 'shhs2','mros1','mros2','cfs','wsc']:
+        gt_dir = gt_path.replace('DATASET',dataset)
+        if not os.path.exists(gt_dir):
+            gt_dir = gt_path.replace('DATASET',dataset+'_new')
+        if not os.path.exists(gt_dir):
+            print(f'{dataset} not found')
+            continue
+        pred_dir = pred_path.replace('DATASET',dataset)
+        if not os.path.exists(pred_dir):
+            pred_dir = pred_path.replace('DATASET',dataset+'_new')
+        if not os.path.exists(pred_dir):
+            print(f'{dataset} not found')
+            continue
+        gt_files = os.listdir(gt_dir)
+        pred_files = os.listdir(pred_dir)
+        all_files = np.intersect1d(gt_files, pred_files)
+        all_errors = []
+        for file in tqdm(all_files):
+            error = calculate_reconstruction_error(file, dataset)
+            all_errors.append(error)
+        all_errors = np.stack(all_errors)
+        mean_error = np.mean(all_errors, 0)
+        std_error = np.std(all_errors, 0)
+        plt.plot(mean_error, label=dataset)
+        plt.fill_between(np.arange(0, mean_error.shape[0]), mean_error - std_error, mean_error + std_error, alpha=0.2)
+        plt.legend()
+        plt.show()
+        bp() 
+        print('--------------------------------')
+        
+if __name__ == '__main__':
+    main()
