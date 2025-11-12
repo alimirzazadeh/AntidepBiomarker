@@ -3,9 +3,14 @@ import os
 from tqdm import tqdm
 from ipdb import set_trace as bp
 import matplotlib.pyplot as plt
+import pandas as pd
 # gt_path = '/data/netmit/sleep_lab/filtered/c4_m1_multitaper/mros1'
 gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
 pred_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/mage/cv_0'
+
+df = pd.read_csv('../data/master_dataset.csv')
+df = df[['filename','label',]]
+df['filename'] = df['filename'].apply(lambda x: x.split('/')[-1])
 
 def calculate_l1_error(gt, pred):
     return np.abs(gt - pred)
@@ -124,7 +129,8 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
     return error
 
 def main():
-    for dataset in ['shhs1', 'shhs2','mros1','mros2','cfs','wsc']:
+    fig, ax = plt.subplots(2, 3, figsize=(15, 10), sharex=True)
+    for dataset in ['cfs','shhs1', 'shhs2','mros1','mros2','wsc']:
         gt_dir = gt_path.replace('DATASET',dataset)
         if not os.path.exists(gt_dir):
             gt_dir = gt_path.replace('DATASET',dataset+'_new')
@@ -142,6 +148,7 @@ def main():
         all_files = np.intersect1d(gt_files, pred_files)
         all_errors_l1 = []
         all_errors_l2 = []
+        all_labels = [] 
         all_errors_percent_diff = []
         for file in tqdm(all_files):
             error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir)
@@ -150,18 +157,32 @@ def main():
             all_errors_l2.append(error)
             error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir, method='percent_diff')
             all_errors_percent_diff.append(error)
+            all_labels.append(df[df['filename'] == file]['label'].values[0])
         all_errors_l1 = np.stack(all_errors_l1)
         all_errors_l2 = np.stack(all_errors_l2)
         all_errors_percent_diff = np.stack(all_errors_percent_diff)
-        mean_error_l1 = np.mean(all_errors_l1, 0)
-        std_error_l1 = np.std(all_errors_l1, 0)
-        mean_error_l2 = np.mean(all_errors_l2, 0)
-        std_error_l2 = np.std(all_errors_l2, 0)
-        mean_error_percent_diff = np.mean(all_errors_percent_diff, 0)
-        std_error_percent_diff = np.std(all_errors_percent_diff, 0)
-        bp() 
-        plt.plot(mean_error_l1, label='L1')
-        plt.fill_between(np.arange(0, mean_error_l1.shape[0]), mean_error_l1 - std_error_l1, mean_error_l1 + std_error_l1, alpha=0.2)
+        all_labels = np.array(all_labels)
+
+        for i in range(2):
+            ax[i, 0].plot(all_errors_l1[all_labels == i], label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
+            ax[i, 1].plot(all_errors_l2[all_labels == i], label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
+            ax[i, 2].plot(all_errors_percent_diff[all_labels == i], label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
+            ax[i, 0].legend()
+            ax[i, 1].legend()
+            ax[i, 2].legend()
+            ax[i, 0].set_title(f'{dataset} L1 Error')
+            ax[i, 1].set_title(f'{dataset} L2 Error')
+            ax[i, 2].set_title(f'{dataset} Percent Difference')
+    bp() 
+    fig.savefig('reconstruction_error.png', dpi=300, bbox_inches='tight')
+        # mean_error_l1 = np.mean(all_errors_l1, 0)
+        # std_error_l1 = np.std(all_errors_l1, 0)
+        # mean_error_l2 = np.mean(all_errors_l2, 0)
+        # std_error_l2 = np.std(all_errors_l2, 0)
+        # mean_error_percent_diff = np.mean(all_errors_percent_diff, 0)
+        # std_error_percent_diff = np.std(all_errors_percent_diff, 0)
+        # plt.plot(mean_error_l1, label='L1')
+        # plt.fill_between(np.arange(0, mean_error_l1.shape[0]), mean_error_l1 - std_error_l1, mean_error_l1 + std_error_l1, alpha=0.2)
         
 if __name__ == '__main__':
     main()
