@@ -162,7 +162,8 @@ def main():
         all_errors_l2 = np.stack(all_errors_l2)
         all_errors_percent_diff = np.stack(all_errors_percent_diff)
         all_labels = np.array(all_labels)
-
+        if dataset == 'cfs':
+            bp() 
         for i in range(2):
             ax[i, 0].plot(all_errors_l1[all_labels == i], label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
             ax[i, 1].plot(all_errors_l2[all_labels == i], label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
