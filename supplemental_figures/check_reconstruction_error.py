@@ -112,9 +112,9 @@ def normalize_gt(eeg, dataset ):
     eeg = (eeg - 0.5) / 0.5
     return eeg
 
-def calculate_reconstruction_error(file, dataset, method:str='l1'):
-    gt = np.load(os.path.join(gt_path, file))['data']
-    pred = np.load(os.path.join(pred_path, file))['pred']
+def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='l1'):
+    gt = np.load(os.path.join(gt_dir, file))['data']
+    pred = np.load(os.path.join(pred_dir, file))['pred']
     gt = normalize_gt(gt, dataset)
     if method == 'l1':
         error = calculate_l1_error(gt.mean(1), pred.mean(1))
@@ -143,7 +143,7 @@ def main():
         all_files = np.intersect1d(gt_files, pred_files)
         all_errors = []
         for file in tqdm(all_files):
-            error = calculate_reconstruction_error(file, dataset)
+            error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir)
             all_errors.append(error)
         all_errors = np.stack(all_errors)
         mean_error = np.mean(all_errors, 0)
