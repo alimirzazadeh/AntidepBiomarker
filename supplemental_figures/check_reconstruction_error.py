@@ -8,8 +8,8 @@ import pandas as pd
 gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
 pred_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/mage/cv_0'
 
-df = pd.read_csv('../data/master_dataset.csv')
-df = df[['filename','label',]]
+df = pd.read_csv('../data/master_dataset.csv',usecols=['filename','label'])
+print(df.shape)
 df['filename'] = df['filename'].apply(lambda x: x.split('/')[-1])
 
 def calculate_l1_error(gt, pred):
