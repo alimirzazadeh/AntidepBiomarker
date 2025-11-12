@@ -170,11 +170,11 @@ def main():
             ax[i, 0].legend()
             ax[i, 1].legend()
             ax[i, 2].legend()
-            ax[i, 0].set_title(f'{dataset} L1 Error')
-            ax[i, 1].set_title(f'{dataset} L2 Error')
-            ax[i, 2].set_title(f'{dataset} Percent Difference')
-        if dataset == 'cfs':
-            bp() 
+            ax[i, 0].set_title(f'L1 Error')
+            ax[i, 1].set_title(f'L2 Error')
+            ax[i, 2].set_title(f'Percent Difference')
+        # if dataset == 'cfs':
+        #     bp() 
     bp() 
     fig.savefig('reconstruction_error.png', dpi=300, bbox_inches='tight')
         # mean_error_l1 = np.mean(all_errors_l1, 0)
