@@ -12,6 +12,7 @@ medication type versus controls.
 import os
 import numpy as np
 import pandas as pd
+from ipdb import set_trace as bp
 from sklearn.metrics import roc_auc_score, f1_score, confusion_matrix
 
 # Configuration
@@ -19,6 +20,7 @@ INFERENCE_FILE = '../../data/inference_v6emb_3920_all.csv'
 TAXONOMY_FILE = '../../data/antidep_taxonomy_all_datasets_v6.csv'
 
 # Analysis configuration
+EVALUATE_BY_DATASET = True 
 ONLY_SINGLE_MEDICATION = True
 THRESHOLD = 0.25
 N_BOOTSTRAP = 1000
@@ -327,6 +329,18 @@ def main():
     
     # Load and preprocess data
     df = load_and_preprocess_data()
+    
+    if EVALUATE_BY_DATASET:
+        for dataset in df['dataset'].unique():
+            print(f"\nAnalyzing {dataset} dataset")
+            dataset_df = df[df['dataset'] == dataset]
+            try:
+                analyze_single_medications(dataset_df)
+                # analyze_medication_types(dataset_df)
+            except Exception as e:
+                print(f"Error analyzing {dataset} dataset: {e}")
+                continue
+    bp() 
     
     if ONLY_SINGLE_MEDICATION:
         print(f"\nAnalyzing single medications only (threshold = {THRESHOLD})")
