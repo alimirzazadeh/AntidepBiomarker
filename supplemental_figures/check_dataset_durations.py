@@ -9,16 +9,21 @@ DEBUG = len(sys.argv) > 1 and sys.argv[1] == 'debug'
 if DEBUG:
     DATASET_LIST = ['cfs']
 else:
-    DATASET_LIST = ['cfs','shhs1', 'shhs2','mros1','mros2','wsc', 'hchs','rf']
+    DATASET_LIST = ['cfs','shhs1', 'shhs2','mros1','mros2','wsc', 'hchs']
 
 signal_dir = '/data/netmit/sleep_lab/filtered/MAGE/DATASET_new/abdominal/'
 all_durations = []
 all_durations_dataset = {}
 for dataset in tqdm(DATASET_LIST):
     all_durations_dataset[dataset] = []
-    signal_files = os.listdir(signal_dir.replace('DATASET', dataset))
+    dataset_dir = signal_dir.replace('DATASET', dataset)
+    if dataset == 'hchs':
+        dataset_dir = '/data/netmit/wifall/ADetect/data/hchs/airflow/'
+    # elif dataset == 'rf':
+    #     dataset_dir = '/data/netmit/sleep_lab/filtered/MAGE/DATASET_new/rf/'
+    signal_files = os.listdir(dataset_dir)
     for file in tqdm(signal_files):
-        signal = np.load(signal_dir.replace('DATASET', dataset) + file)
+        signal = np.load(dataset_dir + file)
         fs = signal['fs']
         data = signal['data']
         duration = len(data) / fs / 3600 # in hours
