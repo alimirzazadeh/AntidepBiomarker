@@ -5,7 +5,7 @@ from tqdm import tqdm
 from ipdb import set_trace as bp
 import sys 
 
-DEBUG = sys.argv[1] == 'debug'
+DEBUG = len(sys.argv) > 1 and sys.argv[1] == 'debug'
 if DEBUG:
     DATASET_LIST = ['cfs']
 else:
