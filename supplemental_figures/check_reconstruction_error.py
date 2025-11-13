@@ -223,15 +223,15 @@ def main():
 
     bootstrap_percent_diff_l1, bootstrap_percent_diff_l1_lower, bootstrap_percent_diff_l1_upper = bootstrap_percent_difference(all_datasets_l1_antidep, all_datasets_l1_control)
     bootstrap_percent_diff_l2, bootstrap_percent_diff_l2_lower, bootstrap_percent_diff_l2_upper = bootstrap_percent_difference(all_datasets_l2_antidep, all_datasets_l2_control)
-    ax[0].plot(np.mean(all_datasets_l1_antidep, 0), label='Antidep', alpha=0.5, c='red')
-    ax[0].plot(np.mean(all_datasets_l1_control, 0), label='Control', alpha=0.5, c='red', ls='dashed')
+    ax2[0].plot(np.mean(all_datasets_l1_antidep, 0), label='Antidep', alpha=0.5, c='red')
+    ax2[0].plot(np.mean(all_datasets_l1_control, 0), label='Control', alpha=0.5, c='red', ls='dashed')
 
-    ax[1].plot(np.mean(all_datasets_l2_antidep, 0), label='Antidep', alpha=0.5, c='red')
-    ax[1].plot(np.mean(all_datasets_l2_control, 0), label='Control', alpha=0.5, c='red', ls='dashed')
-    ax[2].plot(bootstrap_percent_diff_l1, alpha=0.5, c='red')
-    ax[3].plot(bootstrap_percent_diff_l2, alpha=0.5, c='red')
-    ax[2].fill_between(np.arange(0, bootstrap_percent_diff_l1.shape[0]), bootstrap_percent_diff_l1_lower, bootstrap_percent_diff_l1_upper, alpha=0.2, color='red')
-    ax[3].fill_between(np.arange(0, bootstrap_percent_diff_l2.shape[0]), bootstrap_percent_diff_l2_lower, bootstrap_percent_diff_l2_upper, alpha=0.2, color='red')
+    ax2[1].plot(np.mean(all_datasets_l2_antidep, 0), label='Antidep', alpha=0.5, c='red')
+    ax2[1].plot(np.mean(all_datasets_l2_control, 0), label='Control', alpha=0.5, c='red', ls='dashed')
+    ax2[2].plot(bootstrap_percent_diff_l1, alpha=0.5, c='red')
+    ax2[3].plot(bootstrap_percent_diff_l2, alpha=0.5, c='red')
+    ax2[2].fill_between(np.arange(0, bootstrap_percent_diff_l1.shape[0]), bootstrap_percent_diff_l1_lower, bootstrap_percent_diff_l1_upper, alpha=0.2, color='red')
+    ax2[3].fill_between(np.arange(0, bootstrap_percent_diff_l2.shape[0]), bootstrap_percent_diff_l2_lower, bootstrap_percent_diff_l2_upper, alpha=0.2, color='red')
 
     fig.savefig('reconstruction_error_per_dataset.png', dpi=300, bbox_inches='tight')
     fig2.savefig('reconstruction_error_overall.png', dpi=300, bbox_inches='tight')
