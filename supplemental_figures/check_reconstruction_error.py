@@ -4,6 +4,9 @@ from tqdm import tqdm
 from ipdb import set_trace as bp
 import matplotlib.pyplot as plt
 import pandas as pd
+import sys 
+
+DEBUG = sys.argv[1] == 'debug'
 # gt_path = '/data/netmit/sleep_lab/filtered/c4_m1_multitaper/mros1'
 gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
 pred_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/mage/cv_0'
@@ -214,8 +217,8 @@ def main():
         #     ax[i, 0].set_title(f'L1 Error')
         #     ax[i, 1].set_title(f'L2 Error')
         #     ax[i, 2].set_title(f'Percent Difference')
-        # if dataset == 'cfs':
-        #     bp() 
+        if dataset == 'cfs' and DEBUG:
+            bp() 
     all_datasets_l1_antidep = np.concatenate(all_datasets_l1_antidep)
     all_datasets_l2_antidep = np.concatenate(all_datasets_l2_antidep)
     all_datasets_l1_control = np.concatenate(all_datasets_l1_control)
