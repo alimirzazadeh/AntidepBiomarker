@@ -21,7 +21,7 @@ for dataset in tqdm(DATASET_LIST):
         signal = np.load(signal_dir.replace('DATASET', dataset) + file)
         fs = signal['fs']
         data = signal['data']
-        duration = data.shape[1] / fs / 3600 # in hours
+        duration = len(data) / fs / 3600 # in hours
         all_durations.append(duration)
         all_durations_dataset[dataset].append(duration)
 print(np.mean(all_durations), np.std(all_durations))
