@@ -4,6 +4,9 @@ from tqdm import tqdm
 from ipdb import set_trace as bp
 import matplotlib.pyplot as plt
 import pandas as pd
+import sys 
+
+DEBUG = sys.argv[1] == 'debug'
 # gt_path = '/data/netmit/sleep_lab/filtered/c4_m1_multitaper/mros1'
 gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
 pred_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/mage/cv_0'
@@ -11,6 +14,21 @@ pred_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/mage/cv_0'
 df = pd.read_csv('../data/master_dataset.csv',usecols=['filename','label'])
 print(df.shape)
 df['filename'] = df['filename'].apply(lambda x: x.split('/')[-1])
+
+
+def bootstrap_percent_difference(observed, expected, n_bootstrap=1000, ci=95):
+    n_time = observed.shape[1]
+    bootstrapped_diffs = np.zeros((n_bootstrap, n_time))
+
+    for i in tqdm(range(n_bootstrap)):
+        sample_obs = observed[np.random.choice(observed.shape[0], size=observed.shape[0], replace=True)]
+        sample_exp = expected[np.random.choice(expected.shape[0], size=expected.shape[0], replace=True)]
+        bootstrapped_diffs[i] = mean_percent_difference(sample_obs, sample_exp)
+
+    lower = np.percentile(bootstrapped_diffs, (100 - ci) / 2, axis=0)
+    upper = np.percentile(bootstrapped_diffs, 100 - (100 - ci) / 2, axis=0)
+    mean_diff = mean_percent_difference(observed, expected)
+    return mean_diff, lower, upper
 
 def calculate_l1_error(gt, pred):
     return np.abs(gt - pred)
@@ -129,8 +147,15 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
     return error
 
 def main():
-    fig, ax = plt.subplots(2, 3, figsize=(15, 10), sharex=True)
-    for dataset in ['cfs','shhs1', 'shhs2','mros1','mros2','wsc']:
+    fig, ax = plt.subplots(1, 4, figsize=(20, 5), sharex=True)
+    fig2, ax2 = plt.subplots(1, 4, figsize=(20, 5), sharex=True)
+    all_datasets_l1_antidep = [] 
+    all_datasets_l2_antidep = []
+    all_datasets_l1_control = []
+    all_datasets_l2_control = []
+    # all_datasets_percent_diff_l1 = [] 
+    # all_datasets_percent_diff_l2 = [] 
+    for dataset_index, dataset in enumerate(['cfs','shhs1', 'shhs2','mros1','mros2','wsc']):
         gt_dir = gt_path.replace('DATASET',dataset)
         if not os.path.exists(gt_dir):
             gt_dir = gt_path.replace('DATASET',dataset+'_new')
@@ -149,34 +174,70 @@ def main():
         all_errors_l1 = []
         all_errors_l2 = []
         all_labels = [] 
-        all_errors_percent_diff = []
         for file in tqdm(all_files):
             error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir)
             all_errors_l1.append(error)
             error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir, method='l2')
             all_errors_l2.append(error)
             error = calculate_reconstruction_error(file, dataset, gt_dir=gt_dir, pred_dir=pred_dir, method='percent_diff')
-            all_errors_percent_diff.append(error)
             all_labels.append(df[df['filename'] == file]['label'].values[0])
         all_errors_l1 = np.stack(all_errors_l1)
         all_errors_l2 = np.stack(all_errors_l2)
-        all_errors_percent_diff = np.stack(all_errors_percent_diff)
         all_labels = np.array(all_labels)
+        all_errors_percent_diff_l1 = mean_percent_difference(all_errors_l1[all_labels == 1].T, all_errors_l1[all_labels == 0].T)
+        all_errors_percent_diff_l2 = mean_percent_difference(all_errors_l2[all_labels == 1].T, all_errors_l2[all_labels == 0].T)
+        all_datasets_l1_antidep.append(all_errors_l1[all_labels == 1])
+        all_datasets_l2_antidep.append(all_errors_l2[all_labels == 1])
+        all_datasets_l1_control.append(all_errors_l1[all_labels == 0])
+        all_datasets_l2_control.append(all_errors_l2[all_labels == 0])
+        # all_datasets_percent_diff_l1.append(all_errors_percent_diff_l1)
+        # all_datasets_percent_diff_l2.append(all_errors_percent_diff_l2)
 
-        for i in range(2):
-            ax[i, 0].plot(np.mean(all_errors_l1[all_labels == i], 0), label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
-            ax[i, 1].plot(np.mean(all_errors_l2[all_labels == i], 0), label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
-            ax[i, 2].plot(np.mean(all_errors_percent_diff[all_labels == i], 0), label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
-            ax[i, 0].legend()
-            ax[i, 1].legend()
-            ax[i, 2].legend()
-            ax[i, 0].set_title(f'L1 Error')
-            ax[i, 1].set_title(f'L2 Error')
-            ax[i, 2].set_title(f'Percent Difference')
-        # if dataset == 'cfs':
-        #     bp() 
-    bp() 
-    fig.savefig('reconstruction_error.png', dpi=300, bbox_inches='tight')
+        ax[0].plot(all_errors_l1[all_labels == 1].mean(0), label=f'{dataset} Antidep', alpha=0.5, c=['blue','red','green','purple','orange','brown'][dataset_index])
+        ax[0].plot(all_errors_l1[all_labels == 0].mean(0), label=f'{dataset} Control', alpha=0.5, c=['blue','red','green','purple','orange','brown'][dataset_index], ls='dashed')
+        ax[1].plot(all_errors_l2[all_labels == 1].mean(0), label=f'{dataset} Antidep', alpha=0.5, c=['blue','red','green','purple','orange','brown'][dataset_index])
+        ax[1].plot(all_errors_l2[all_labels == 0].mean(0), label=f'{dataset} Control', alpha=0.5, c=['blue','red','green','purple','orange','brown'][dataset_index], ls='dashed')
+        ax[2].plot(all_errors_percent_diff_l1, label=f'{dataset}', alpha=0.5)
+        ax[3].plot(all_errors_percent_diff_l2, label=f'{dataset}', alpha=0.5)
+        ax[0].legend()
+        ax[1].legend()
+        ax[2].legend(title='Percent Difference')
+        ax[3].legend(title='Percent Difference')
+        ax[0].set_title(f'L1 Error')
+        ax[1].set_title(f'L2 Error')
+        ax[2].set_title(f'L1 Error Percent Difference')
+        ax[3].set_title(f'L2 Error Percent Difference')
+        # for i in range(2):
+        #     ax[i, 0].plot(np.mean(all_errors_l1[all_labels == i], 0), label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
+        #     ax[i, 1].plot(np.mean(all_errors_l2[all_labels == i], 0), label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
+        #     ax[i, 2].plot(np.mean(all_errors_percent_diff[all_labels == i], 0), label=f'{dataset} {['Control', 'Antidep'][i]}', alpha=0.5)
+        #     ax[i, 0].legend()
+        #     ax[i, 1].legend()
+        #     ax[i, 2].legend()
+        #     ax[i, 0].set_title(f'L1 Error')
+        #     ax[i, 1].set_title(f'L2 Error')
+        #     ax[i, 2].set_title(f'Percent Difference')
+        if dataset == 'cfs' and DEBUG:
+            bp() 
+    all_datasets_l1_antidep = np.concatenate(all_datasets_l1_antidep)
+    all_datasets_l2_antidep = np.concatenate(all_datasets_l2_antidep)
+    all_datasets_l1_control = np.concatenate(all_datasets_l1_control)
+    all_datasets_l2_control = np.concatenate(all_datasets_l2_control)
+
+    bootstrap_percent_diff_l1, bootstrap_percent_diff_l1_lower, bootstrap_percent_diff_l1_upper = bootstrap_percent_difference(all_datasets_l1_antidep, all_datasets_l1_control)
+    bootstrap_percent_diff_l2, bootstrap_percent_diff_l2_lower, bootstrap_percent_diff_l2_upper = bootstrap_percent_difference(all_datasets_l2_antidep, all_datasets_l2_control)
+    ax2[0].plot(np.mean(all_datasets_l1_antidep, 0), label='Antidep', alpha=0.5, c='red')
+    ax2[0].plot(np.mean(all_datasets_l1_control, 0), label='Control', alpha=0.5, c='red', ls='dashed')
+
+    ax2[1].plot(np.mean(all_datasets_l2_antidep, 0), label='Antidep', alpha=0.5, c='red')
+    ax2[1].plot(np.mean(all_datasets_l2_control, 0), label='Control', alpha=0.5, c='red', ls='dashed')
+    ax2[2].plot(bootstrap_percent_diff_l1, alpha=0.5, c='red')
+    ax2[3].plot(bootstrap_percent_diff_l2, alpha=0.5, c='red')
+    ax2[2].fill_between(np.arange(0, bootstrap_percent_diff_l1.shape[0]), bootstrap_percent_diff_l1_lower, bootstrap_percent_diff_l1_upper, alpha=0.2, color='red')
+    ax2[3].fill_between(np.arange(0, bootstrap_percent_diff_l2.shape[0]), bootstrap_percent_diff_l2_lower, bootstrap_percent_diff_l2_upper, alpha=0.2, color='red')
+
+    fig.savefig('reconstruction_error_per_dataset.png', dpi=300, bbox_inches='tight')
+    fig2.savefig('reconstruction_error_overall.png', dpi=300, bbox_inches='tight')
         # mean_error_l1 = np.mean(all_errors_l1, 0)
         # std_error_l1 = np.std(all_errors_l1, 0)
         # mean_error_l2 = np.mean(all_errors_l2, 0)
