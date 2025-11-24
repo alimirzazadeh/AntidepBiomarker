@@ -153,7 +153,7 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
 
 def main2():
     ## this one just does wsc, but does each fold separately 
-    fig,ax = plt.subplots(4, 1, figsize=(16, 16), sharex=True)
+    fig,ax = plt.subplots(4, 4, figsize=(16, 16), sharex=True)
     for fold in range(4):
         gt_dir = gt_path.replace('DATASET',f'wsc_new')
         pred_dir = pred_path.replace('DATASET',f'wsc_new').replace('cv_0',f'cv_{fold}')
