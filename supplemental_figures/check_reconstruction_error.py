@@ -190,8 +190,6 @@ def main2():
         ax[fold,2].set_title(f'L1 Error Percent Difference')
         ax[fold,3].set_title(f'L2 Error Percent Difference')
     plt.tight_layout()
-    plt.show() 
-    bp() 
     fig.savefig('reconstruction_error_per_fold.png', dpi=300, bbox_inches='tight')
     plt.close()
 
