@@ -49,10 +49,14 @@ def check_single_sample_auroc():
     auroc = roc_auc_score(labels['label'], labels['pred'])
     return auroc
 
-def flip_label(label, prop_flip=0.1):
+def flip_label(label, prop_flip=0.1, only_if_label_is_0=False):
     """
     Flip the label with a given probability.
     """
+    if only_if_label_is_0 and label == 1:
+        return label
+    if only_if_label_is_0 and label == 0 and np.random.rand() < prop_flip:
+        return 1
     if np.random.rand() < prop_flip:
         return 1 - label
     return label
@@ -197,7 +201,7 @@ def evaluate_per_dataset_performance(labels_model_baseline):
                 labels_model_baseline[dataset_mask_our]['prob']
             )
             output.append({
-                'dataset': dataset,
+                'Dataset': dataset.replace('rf','MIT').upper(),
                 'auroc': auroc_our,
                 'lower': lower,
                 'upper': upper
@@ -212,28 +216,34 @@ def main():
     """
     Main analysis pipeline.
     """
-    check_single_sample_auroc()
-    bp() 
+    # check_single_sample_auroc()
+    # bp() 
     results = []
     df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data()
     
     for label_noise in [0.0, 0.01, 0.05, 0.1, 0.2]:
+        label_noise_pre = label_noise
+        ## represents percentage of positive class, first calcualte the proportion of positives to negatives 
+        prop_positive = labels_model_baseline['label'].mean()
+        prop_ratio = (1 - prop_positive) / prop_positive
+        label_noise = label_noise / prop_ratio
+        print(f'Label noise: {label_noise}')
         labels_model_baseline_noisy = labels_model_baseline.copy()
-        labels_model_baseline_noisy['label'] = labels_model_baseline_noisy['label'].apply(lambda x: flip_label(x, label_noise))
+        labels_model_baseline_noisy['label'] = labels_model_baseline_noisy['label'].apply(lambda x: flip_label(x, label_noise, only_if_label_is_0=True))
         # Evaluate per-dataset performance
         print("\n3. Evaluating per-dataset performance...")
         output = evaluate_per_dataset_performance(labels_model_baseline_noisy)
         print(output)
         output = pd.DataFrame(output)
-        output['label_noise'] = label_noise
+        output['label_noise'] = label_noise_pre * 100
         results.append(output)
     df = pd.concat(results)
     df['formatted'] = df.apply(
         lambda row: f"{row['auroc']:.3f} [{row['lower']:.3f} - {row['upper']:.3f}]", 
         axis=1
     )
-    pivot_table = df.pivot(index='label_noise', columns='dataset', values='formatted')
-    pivot_table.index.name = 'Label Noise'
+    pivot_table = df.pivot(index='label_noise', columns='Dataset', values='formatted')
+    pivot_table.index.name = 'Label Noise %'
     dfi.export(pivot_table, 'label_noise_sensitivity.png')
     print('done')
     
