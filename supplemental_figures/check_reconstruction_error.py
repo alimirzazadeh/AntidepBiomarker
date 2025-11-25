@@ -152,7 +152,7 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
     return error, gt.mean(1), pred.mean(1)
 
 def main3():
-    fig,ax = plt.subplots(4, 3, figsize=(16, 16))
+    fig,ax = plt.subplots(4, 4, figsize=(16, 16))
     for fold in range(4):
         gt_dir = gt_path.replace('DATASET',f'wsc_new')
         pred_dir = pred_path.replace('DATASET',f'wsc_new').replace('cv_0',f'cv_{fold}')
