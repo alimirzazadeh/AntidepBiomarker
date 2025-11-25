@@ -149,8 +149,47 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
         error = calculate_l2_error(gt.mean(1), pred.mean(1))
     elif method == 'percent_diff':
         error = mean_percent_difference(gt.T, pred.T)
-    return error
+    return error, gt.mean(1), pred.mean(1)
 
+def main3():
+    fig,ax = plt.subplots(4, 3, figsize=(16, 16))
+    for fold in range(4):
+        gt_dir = gt_path.replace('DATASET',f'wsc_new')
+        pred_dir = pred_path.replace('DATASET',f'wsc_new').replace('cv_0',f'cv_{fold}')
+        all_files = os.listdir(gt_dir)
+        all_errors_l1 = []
+        all_errors_l2 = []
+        all_gts = []
+        all_preds = []
+        all_labels = [] 
+        for file in tqdm(all_files):
+            error, gt, pred = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir)
+            all_errors_l1.append(error)
+            all_gts.append(gt)
+            all_preds.append(pred)
+            error, _, _ = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir, method='l2')
+            all_errors_l2.append(error)
+            all_labels.append(df[df['filename'] == file]['label'].values[0])
+        all_errors_l1 = np.stack(all_errors_l1)
+        all_errors_l2 = np.stack(all_errors_l2)
+        all_gts = np.stack(all_gts)
+        all_preds = np.stack(all_preds)
+        all_labels = np.array(all_labels)
+        ax[fold,0].plot(all_errors_l1[all_labels == 1].mean(0), label=f'Antidep', alpha=0.5, c='blue')
+        ax[fold,0].plot(all_errors_l1[all_labels == 0].mean(0), label=f'Control', alpha=0.5, c='blue', ls='dashed')
+        ax[fold,2].plot(all_errors_l2[all_labels == 1].mean(0), label=f'Antidep', alpha=0.5, c='red')
+        ax[fold,2].plot(all_errors_l2[all_labels == 0].mean(0), label=f'Control', alpha=0.5, c='red', ls='dashed')
+        ax[fold,1].plot(all_gts[all_labels == 1].mean(0), label=f'Antidep', alpha=0.5, c='blue')
+        ax[fold,1].plot(all_gts[all_labels == 0].mean(0), label=f'Control', alpha=0.5, c='blue', ls='dashed')
+        ax[fold,1].plot(all_preds[all_labels == 1].mean(0), label=f'Antidep', alpha=0.5, c='red')
+        ax[fold,1].plot(all_preds[all_labels == 0].mean(0), label=f'Control', alpha=0.5, c='red', ls='dashed')
+        ax[fold,0].set_ylabel('L1 Error')
+        ax[fold,2].set_ylabel('L2 Error')
+        ax[fold,1].set_ylabel('GT')
+        ax[fold,2].set_ylabel('Pred')
+    plt.tight_layout()
+    fig.savefig('reconstruction_error_per_fold_gt_pred.png', dpi=300, bbox_inches='tight')
+    plt.close()
 def main2():
     ## this one just does wsc, but does each fold separately 
     fig,ax = plt.subplots(4, 4, figsize=(16, 16))
@@ -160,16 +199,22 @@ def main2():
         all_files = os.listdir(gt_dir)
         all_errors_l1 = []
         all_errors_l2 = []
+        all_gts = []
+        all_preds = []
         all_labels = [] 
         for file in tqdm(all_files):
-            error = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir)
+            error, gt, pred = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir)
             all_errors_l1.append(error)
-            error = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir, method='l2')
+            all_gts.append(gt)
+            all_preds.append(pred)
+            error, _, _ = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir, method='l2')
             all_errors_l2.append(error)
-            error = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir, method='percent_diff')
+            error, _, _ = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir, method='percent_diff')
             all_labels.append(df[df['filename'] == file]['label'].values[0])
         all_errors_l1 = np.stack(all_errors_l1)
         all_errors_l2 = np.stack(all_errors_l2)
+        all_gts = np.stack(all_gts)
+        all_preds = np.stack(all_preds)
         all_labels = np.array(all_labels)
         all_errors_percent_diff_l1, all_errors_percent_diff_l1_lower, all_errors_percent_diff_l1_upper = bootstrap_percent_difference(all_errors_l1[all_labels == 1], all_errors_l1[all_labels == 0])
         all_errors_percent_diff_l2, all_errors_percent_diff_l2_lower, all_errors_percent_diff_l2_upper = bootstrap_percent_difference(all_errors_l2[all_labels == 1], all_errors_l2[all_labels == 0])
@@ -339,4 +384,4 @@ def main():
         # plt.fill_between(np.arange(0, mean_error_l1.shape[0]), mean_error_l1 - std_error_l1, mean_error_l1 + std_error_l1, alpha=0.2)
         
 if __name__ == '__main__':
-    main2()
+    main3()

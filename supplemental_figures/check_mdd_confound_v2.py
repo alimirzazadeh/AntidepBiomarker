@@ -15,7 +15,9 @@ import scipy
 
 def format_pvalue(pvalue):
     """Format p-value as a string."""
-    if pvalue < 0.0001:
+    if pvalue < 0.00001:
+        return f'{pvalue:.3e}' #2e-5
+    elif pvalue < 0.0001:
         return '<0.0001'
     elif pvalue < 0.001:
         return '<0.001'
@@ -122,8 +124,65 @@ labels = ['<30', '30-40', '40-50', '50-60', '60+']
 df_pos['zung_index_bin'] = pd.cut(df_pos['zung_index'], bins=bins, labels=labels, include_lowest=True)
 df_neg['zung_index_bin'] = pd.cut(df_neg['zung_index'], bins=bins, labels=labels, include_lowest=True)
 
-# Calculate median and IQR for error bars
 if True:
+    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+    
+    # Prepare data for boxplots: controls first, then antidepressants
+    # Add group labels
+    df_neg['group'] = 'Control'
+    df_pos['group'] = 'Antidepressant'
+    
+    # Combine dataframes
+    df_combined = pd.concat([df_neg, df_pos], ignore_index=True)
+    
+    # Create a column for x-axis ordering: controls first, then antidepressants
+    # We'll create a combined label that includes both group and bin
+    df_combined['Zung Index Bin'] = df_combined.apply(
+        lambda x: f"{x['group']}\n{x['zung_index_bin']}", axis=1
+    )
+    
+    # Create order list: controls first (ordered by zung_index_bin), then antidepressants
+    order_list = []
+    for label in labels:
+        order_list.append(f'Control\n{label}')
+    for label in labels:
+        order_list.append(f'Antidepressant\n{label}')
+    
+    # Create boxplots using seaborn
+    sns.boxplot(data=df_combined, x='Zung Index Bin', y='pred', order=order_list,
+                palette='Greens', ax=ax, showfliers=False)
+    
+    # Add N labels above each boxplot (above the median line)
+    for i, x_label in enumerate(order_list):
+        subset = df_combined[df_combined['Zung Index Bin'] == x_label]['pred'].dropna()
+        if len(subset) > 0:
+            n = len(subset)
+            median_val = subset.median()
+            ax.text(i, median_val + 0.01, f'N={n}', ha='center', va='bottom', fontsize=9)
+    
+    # Calculate and add Pearson correlations
+    corr_neg, pval_neg = scipy.stats.pearsonr(df_neg['zung_index'], df_neg['pred'])
+    corr_pos, pval_pos = scipy.stats.pearsonr(df_pos['zung_index'], df_pos['pred'])
+    corr_all, pval_all = scipy.stats.pearsonr(df['zung_index'], df['pred'])
+    print(f'Pearson correlation: {corr_all:.2f} (p{(pval_all)})')
+    # Add correlation text
+    ax.text(0.02, 0.98, f'Control: r={corr_neg:.2f} (p{format_pvalue(pval_neg)}) \nAntidepressant: r={corr_pos:.2f} (p{format_pvalue(pval_pos)})', 
+            fontsize=11, transform=ax.transAxes, verticalalignment='top',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    # ax.text(0.98, 0.98, f'Antidepressant: r={corr_pos:.2f} (p{format_pvalue(pval_pos)})', 
+    #         fontsize=11, transform=ax.transAxes, verticalalignment='top', horizontalalignment='right',
+    #         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
+    ax.set_ylabel('Model Prediction', fontsize=12)
+    ax.set_ylim(0, 1)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    plt.savefig('check_mdd_confound_v2.png', dpi=300, bbox_inches='tight')
+
+    # plt.savefig('check_mdd_confound_v2.png', dpi=300, bbox_inches='tight')
+
+# Calculate median and IQR for error bars
+if False:
     fig,ax = plt.subplots(1,2,figsize=(16,8))
     pos_median = df_pos.groupby('zung_index_bin')['pred'].median()
     pos_mean = df_pos.groupby('zung_index_bin')['pred'].mean()
