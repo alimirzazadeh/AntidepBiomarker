@@ -153,7 +153,7 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
 
 def main3():
     fig,ax = plt.subplots(4, 5, figsize=(20, 16))
-    for fold in range(1):
+    for fold in range(4):
         gt_dir = gt_path.replace('DATASET',f'wsc_new')
         pred_dir = pred_path.replace('DATASET',f'wsc_new').replace('cv_0',f'cv_{fold}')
         all_files = os.listdir(gt_dir)
@@ -177,8 +177,8 @@ def main3():
         L1_ERROR_DIFFERENCE_FIGURE = 4
         GT_DIFFERENCE_FIGURE = 2
         PREDICTED_DIFFERENCE_FIGURE = 1
-        ax[fold,L1_ERROR_FIGURE].plot(all_errors_l1[all_labels == 1].mean(0), label=f'Antidepressant', alpha=0.7, c='red')
         ax[fold,L1_ERROR_FIGURE].plot(all_errors_l1[all_labels == 0].mean(0), label=f'Control', alpha=0.7, c='blue')
+        ax[fold,L1_ERROR_FIGURE].plot(all_errors_l1[all_labels == 1].mean(0), label=f'Antidepressant', alpha=0.7, c='red')
         ax[fold,L1_ERROR_DIFFERENCE_FIGURE].plot(np.abs(all_errors_l1[all_labels == 1].mean(0) - all_errors_l1[all_labels == 0].mean(0)), alpha=0.8, c='black')
         ax[fold,POWER_FIGURE].plot(all_preds[all_labels == 0].mean(0), label=f'Control', alpha=0.7, c='blue')
         ax[fold,POWER_FIGURE].plot(all_preds[all_labels == 1].mean(0), label=f'Antidepressant', alpha=0.7, c='red')
@@ -191,23 +191,24 @@ def main3():
         ax[fold,GT_DIFFERENCE_FIGURE].plot(gt_diff, alpha=0.8, c='black')
         
         ax[fold,L1_ERROR_FIGURE].set_ylabel('Mean Absolute Error')
-        ax[fold,POWER_FIGURE].set_ylabel('Predicted Power')
+        ax[fold,POWER_FIGURE].set_ylabel(f'Fold {fold}\nPredicted Power')
         ax[fold,PREDICTED_DIFFERENCE_FIGURE].set_ylabel('Absolute Difference')
         ax[fold,GT_DIFFERENCE_FIGURE].set_ylabel('Absolute Difference')
         ax[fold,L1_ERROR_DIFFERENCE_FIGURE].set_ylabel('Absolute Difference')
         ax[0,POWER_FIGURE].set_title('Predicted Power')
-        ax[0,L1_ERROR_FIGURE].set_title('Mean Absolute Error of Antidepressants\nand Controls')
-        ax[0,PREDICTED_DIFFERENCE_FIGURE].set_title('EEG Predictions Absolute Difference \n between Antidepressants and Control')
-        ax[0,GT_DIFFERENCE_FIGURE].set_title('EEG Ground Truth Absolute Difference \n between Antidepressants and Control')
-        ax[0,L1_ERROR_DIFFERENCE_FIGURE].set_title('Mean Absolute Error Difference \n between Antidepressants and Control')
+        ax[0,L1_ERROR_FIGURE].set_title('Mean Absolute Error')
+        ax[0,PREDICTED_DIFFERENCE_FIGURE].set_title('EEG Predictions Absolute Difference \n between Cohorts')
+        ax[0,GT_DIFFERENCE_FIGURE].set_title('EEG Ground Truth Absolute Difference \n between Cohorts')
+        ax[0,L1_ERROR_DIFFERENCE_FIGURE].set_title('Difference in Mean Absolute Error \n between Cohorts')
         ax[0,L1_ERROR_FIGURE].legend()
         ax[0,POWER_FIGURE].legend()
-        ax[fold,POWER_FIGURE].set_ylim(0,0.05)
+        ax[fold,L1_ERROR_DIFFERENCE_FIGURE].set_ylim(0,0.05)
         ax[fold,PREDICTED_DIFFERENCE_FIGURE].set_ylim(0,0.05)
         ax[fold,GT_DIFFERENCE_FIGURE].set_ylim(0,0.05)
         for i in range(5):
             ax[fold,i].set_xticks(np.arange(0, 257, 32))
             ax[fold,i].set_xticklabels(np.arange(0, 33, 4))
+            ax[fold,i].set_xlabel('Frequency (Hz)')
     plt.tight_layout()
     fig.savefig('reconstruction_error_per_fold_gt_pred.png', dpi=300, bbox_inches='tight')
     plt.close()
