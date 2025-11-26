@@ -177,18 +177,18 @@ def main3():
         L1_ERROR_DIFFERENCE_FIGURE = 4
         GT_DIFFERENCE_FIGURE = 2
         PREDICTED_DIFFERENCE_FIGURE = 1
-        ax[fold,L1_ERROR_FIGURE].plot(all_errors_l1[all_labels == 1].mean(0), label=f'Antidep', alpha=0.5, c='red')
-        ax[fold,L1_ERROR_FIGURE].plot(all_errors_l1[all_labels == 0].mean(0), label=f'Control', alpha=0.5, c='blue', ls='dashed')
-        ax[fold,L1_ERROR_DIFFERENCE_FIGURE].plot(np.abs(all_errors_l1[all_labels == 1].mean(0) - all_errors_l1[all_labels == 0].mean(0)), label=f'Antidep - Control', alpha=1.0, c='black')
-        ax[fold,POWER_FIGURE].plot(all_preds[all_labels == 0].mean(0), label=f'Control', alpha=0.5, c='blue', ls='dashed')
-        ax[fold,POWER_FIGURE].plot(all_preds[all_labels == 1].mean(0), label=f'Antidep', alpha=0.5, c='red')
+        ax[fold,L1_ERROR_FIGURE].plot(all_errors_l1[all_labels == 1].mean(0), label=f'Antidepressant', alpha=0.7, c='red')
+        ax[fold,L1_ERROR_FIGURE].plot(all_errors_l1[all_labels == 0].mean(0), label=f'Control', alpha=0.7, c='blue')
+        ax[fold,L1_ERROR_DIFFERENCE_FIGURE].plot(np.abs(all_errors_l1[all_labels == 1].mean(0) - all_errors_l1[all_labels == 0].mean(0)), alpha=0.8, c='black')
+        ax[fold,POWER_FIGURE].plot(all_preds[all_labels == 0].mean(0), label=f'Control', alpha=0.7, c='blue')
+        ax[fold,POWER_FIGURE].plot(all_preds[all_labels == 1].mean(0), label=f'Antidepressant', alpha=0.7, c='red')
         
         # ax[fold,3].plot(all_gts[all_labels == 0].mean(0), label=f'Control', alpha=0.5, c='blue', ls='dashed')
         # ax[fold,3].plot(all_gts[all_labels == 1].mean(0), label=f'Antidep', alpha=0.5, c='red')
         l1_error_diff = np.abs(all_preds[all_labels == 1].mean(0) - all_preds[all_labels == 0].mean(0))
-        ax[fold,PREDICTED_DIFFERENCE_FIGURE].plot(l1_error_diff, label=f'Predicted Difference', alpha=0.5, c='green')
+        ax[fold,PREDICTED_DIFFERENCE_FIGURE].plot(l1_error_diff, alpha=0.7, c='black')
         gt_diff = np.abs(all_gts[all_labels == 1].mean(0) - all_gts[all_labels == 0].mean(0))
-        ax[fold,GT_DIFFERENCE_FIGURE].plot(gt_diff, label=f'Ground Truth Difference', alpha=0.5, c='green')
+        ax[fold,GT_DIFFERENCE_FIGURE].plot(gt_diff, alpha=0.8, c='black')
         
         ax[fold,L1_ERROR_FIGURE].set_ylabel('Mean Absolute Error')
         ax[fold,POWER_FIGURE].set_ylabel('Predicted Power')
@@ -200,6 +200,8 @@ def main3():
         ax[0,PREDICTED_DIFFERENCE_FIGURE].set_title('EEG Predictions Absolute Difference \n between Antidepressants and Control')
         ax[0,GT_DIFFERENCE_FIGURE].set_title('EEG Ground Truth Absolute Difference \n between Antidepressants and Control')
         ax[0,L1_ERROR_DIFFERENCE_FIGURE].set_title('Mean Absolute Error Difference \n between Antidepressants and Control')
+        ax[0,L1_ERROR_FIGURE].legend()
+        ax[0,POWER_FIGURE].legend()
         ax[fold,POWER_FIGURE].set_ylim(0,0.05)
         ax[fold,PREDICTED_DIFFERENCE_FIGURE].set_ylim(0,0.05)
         ax[fold,GT_DIFFERENCE_FIGURE].set_ylim(0,0.05)
