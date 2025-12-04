@@ -153,6 +153,8 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
 
 def main4():
     fig,ax = plt.subplots(4, 4, figsize=(20, 16))
+    fig.savefig('percent_difference_per_fold.png', dpi=300, bbox_inches='tight')
+    fig,ax = plt.subplots(4, 4, figsize=(20, 16))
     ## first plot is the percent error difference between antidepressants and controls
     ## second plot is the percent error difference between ground truth and predicted (dataset level)
     ## third plot is the percent error difference between ground truth and predicted (subject level)
