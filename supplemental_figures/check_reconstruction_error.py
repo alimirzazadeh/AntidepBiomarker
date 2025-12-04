@@ -183,7 +183,7 @@ def main4():
         all_errors_percent_diff_reconstruction_subject = all_percent_diffs.mean(0)
         all_errors_percent_diff_reconstruction_subject_lower = np.percentile(all_percent_diffs, 2.5, 0)
         all_errors_percent_diff_reconstruction_subject_upper = np.percentile(all_percent_diffs, 97.5, 0)
-        
+        bp() 
         PERCENT_DIFFERENCE_PREDICTED_FIGURE = 1
         PERCENT_DIFFERENCE_GT_FIGURE = 0
         PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE = 2
@@ -211,6 +211,11 @@ def main4():
         ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].set_xlabel('Frequency (Hz)')
         ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].set_xlabel('Frequency (Hz)')
         ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].set_xlabel('Frequency (Hz)')
+        
+        print('Subject level percent difference: ', all_percent_diffs.mean())
+        print('Dataset level percent difference: ', all_errors_percent_diff_reconstruction_dataset.mean())
+        print('Predicted level percent difference: ', all_errors_percent_diff_pred.mean())
+        print('Ground truth level percent difference: ', all_errors_percent_diff_gt.mean())
     plt.tight_layout()
     fig.savefig('percent_difference_per_fold.png', dpi=300, bbox_inches='tight')
     plt.close()
