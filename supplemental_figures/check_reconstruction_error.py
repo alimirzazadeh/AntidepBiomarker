@@ -152,14 +152,32 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
     return error, gt.mean(1), pred.mean(1)
 
 def main4():
-    fig,ax = plt.subplots(4, 4, figsize=(20, 16))
+    fig,ax = plt.subplots(1, 4, figsize=(20, 16))
     ## first plot is the percent error difference between antidepressants and controls
     ## second plot is the percent error difference between ground truth and predicted (dataset level)
     ## third plot is the percent error difference between ground truth and predicted (subject level)
-    for fold in range(1):
-        gt_dir = gt_path.replace('DATASET',f'wsc_new')
-        pred_dir = pred_path.replace('DATASET',f'wsc_new').replace('cv_0',f'cv_{fold}')
-        all_files = os.listdir(gt_dir)
+    # for fold in range(1):
+    fold = 0 
+    for dataset_index, dataset in enumerate(DATASET_LIST):
+        gt_dir = gt_path.replace('DATASET',dataset)
+        if not os.path.exists(gt_dir):
+            gt_dir = gt_path.replace('DATASET',dataset+'_new')
+        if not os.path.exists(gt_dir):
+            print(f'{dataset} not found')
+            continue
+        pred_dir = pred_path.replace('DATASET',dataset)
+        if not os.path.exists(pred_dir):
+            pred_dir = pred_path.replace('DATASET',dataset+'_new')
+        if not os.path.exists(pred_dir):
+            print(f'{dataset} not found')
+            continue
+        gt_files = os.listdir(gt_dir)
+        pred_files = os.listdir(pred_dir)
+        all_files = np.intersect1d(gt_files, pred_files)
+        
+        # gt_dir = gt_path.replace('DATASET',f'wsc_new')
+        # pred_dir = pred_path.replace('DATASET',f'wsc_new').replace('cv_0',f'cv_{fold}')
+        # all_files = os.listdir(gt_dir)
 
         all_gts = []
         all_preds = []
@@ -171,49 +189,54 @@ def main4():
             all_gts.append(gt)
             all_preds.append(pred)
             all_labels.append(df[df['filename'] == file]['label'].values[0])
-        all_percent_diffs = np.stack(all_percent_diffs)
-        all_gts = np.stack(all_gts)
-        all_preds = np.stack(all_preds)
-        all_labels = np.array(all_labels)
-        all_errors_percent_diff_pred, all_errors_percent_diff_pred_lower, all_errors_percent_diff_pred_upper = bootstrap_percent_difference(all_preds[all_labels == 1], all_preds[all_labels == 0])
-        all_errors_percent_diff_gt, all_errors_percent_diff_gt_lower, all_errors_percent_diff_gt_upper = bootstrap_percent_difference(all_gts[all_labels == 1], all_gts[all_labels == 0])
-        all_errors_percent_diff_reconstruction_dataset, all_errors_percent_diff_reconstruction_dataset_lower, all_errors_percent_diff_reconstruction_dataset_upper = bootstrap_percent_difference(all_preds, all_gts)
-        all_errors_percent_diff_reconstruction_subject = all_percent_diffs.mean(0)
-        all_errors_percent_diff_reconstruction_subject_lower = np.percentile(all_percent_diffs, 2.5, 0)
-        all_errors_percent_diff_reconstruction_subject_upper = np.percentile(all_percent_diffs, 97.5, 0)
-        bp() 
-        PERCENT_DIFFERENCE_PREDICTED_FIGURE = 1
-        PERCENT_DIFFERENCE_GT_FIGURE = 0
-        PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE = 2
-        PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE = 3
-        x_range = 256
-        ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].plot(all_errors_percent_diff_pred, alpha=0.7, c='black')
-        ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].fill_between(np.arange(0, x_range), all_errors_percent_diff_pred_lower, all_errors_percent_diff_pred_upper, alpha=0.2, color='black')
-        ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].axhline(y=0, color='gray', ls='dashed', alpha=0.5)
-        ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].plot(all_errors_percent_diff_gt, alpha=0.7, c='black')
-        ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].fill_between(np.arange(0, x_range), all_errors_percent_diff_gt_lower, all_errors_percent_diff_gt_upper, alpha=0.2, color='black')
-        ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].axhline(y=0, color='gray', ls='dashed', alpha=0.5)
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].plot(all_errors_percent_diff_reconstruction_dataset, alpha=0.7, c='black')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].fill_between(np.arange(0, x_range), all_errors_percent_diff_reconstruction_dataset_lower, all_errors_percent_diff_reconstruction_dataset_upper, alpha=0.2, color='black')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].plot(all_errors_percent_diff_reconstruction_subject, alpha=0.7, c='black')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].fill_between(np.arange(0, x_range), all_errors_percent_diff_reconstruction_subject_lower, all_errors_percent_diff_reconstruction_subject_upper, alpha=0.2, color='black')
-        ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].set_ylabel('Percent Difference')
-        ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].set_ylabel('Percent Difference')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].set_ylabel('Percent Difference')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].set_ylabel('Percent Difference')
-        ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].set_title('Percent Difference between Antidepressants and Controls (Predicted) (Cohort Level)')
-        ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].set_title('Percent Difference between Antidepressants and Controls (Ground Truth) (Cohort Level)')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].set_title('Percent Difference between Predicted and Ground Truth (Cohort Level)')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].set_title('Percent Difference between Predicted and Ground Truth (Subject Level)')
-        ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].set_xlabel('Frequency (Hz)')
-        ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].set_xlabel('Frequency (Hz)')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].set_xlabel('Frequency (Hz)')
-        ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].set_xlabel('Frequency (Hz)')
-        
-        print('Subject level percent difference: ', all_percent_diffs.mean())
-        print('Dataset level percent difference: ', all_errors_percent_diff_reconstruction_dataset.mean())
-        print('Predicted level percent difference: ', all_errors_percent_diff_pred.mean())
-        print('Ground truth level percent difference: ', all_errors_percent_diff_gt.mean())
+    all_percent_diffs = np.stack(all_percent_diffs)
+    all_gts = np.stack(all_gts)
+    all_preds = np.stack(all_preds)
+    all_labels = np.array(all_labels)
+    all_errors_percent_diff_pred, all_errors_percent_diff_pred_lower, all_errors_percent_diff_pred_upper = bootstrap_percent_difference(all_preds[all_labels == 1], all_preds[all_labels == 0])
+    all_errors_percent_diff_gt, all_errors_percent_diff_gt_lower, all_errors_percent_diff_gt_upper = bootstrap_percent_difference(all_gts[all_labels == 1], all_gts[all_labels == 0])
+    all_errors_percent_diff_reconstruction_dataset, all_errors_percent_diff_reconstruction_dataset_lower, all_errors_percent_diff_reconstruction_dataset_upper = bootstrap_percent_difference(all_preds, all_gts)
+    all_errors_percent_diff_reconstruction_subject = all_percent_diffs.mean(0)
+    all_errors_percent_diff_reconstruction_subject_lower = np.percentile(all_percent_diffs, 2.5, 0)
+    all_errors_percent_diff_reconstruction_subject_upper = np.percentile(all_percent_diffs, 97.5, 0)
+    
+    PERCENT_DIFFERENCE_PREDICTED_FIGURE = 1
+    PERCENT_DIFFERENCE_GT_FIGURE = 0
+    PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE = 2
+    PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE = 3
+    x_range = 256
+    ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].plot(all_errors_percent_diff_pred, alpha=0.7, c='black')
+    ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].fill_between(np.arange(0, x_range), all_errors_percent_diff_pred_lower, all_errors_percent_diff_pred_upper, alpha=0.2, color='black')
+    ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].axhline(y=0, color='gray', ls='dashed', alpha=0.5)
+    ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].plot(all_errors_percent_diff_gt, alpha=0.7, c='black')
+    ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].fill_between(np.arange(0, x_range), all_errors_percent_diff_gt_lower, all_errors_percent_diff_gt_upper, alpha=0.2, color='black')
+    ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].axhline(y=0, color='gray', ls='dashed', alpha=0.5)
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].plot(all_errors_percent_diff_reconstruction_dataset, alpha=0.7, c='black')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].fill_between(np.arange(0, x_range), all_errors_percent_diff_reconstruction_dataset_lower, all_errors_percent_diff_reconstruction_dataset_upper, alpha=0.2, color='black')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].plot(all_errors_percent_diff_reconstruction_subject, alpha=0.7, c='black')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].fill_between(np.arange(0, x_range), all_errors_percent_diff_reconstruction_subject_lower, all_errors_percent_diff_reconstruction_subject_upper, alpha=0.2, color='black')
+    ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].set_ylabel('Percent Difference')
+    ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].set_ylabel('Percent Difference')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].set_ylabel('Percent Difference')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].set_ylabel('Percent Difference')
+    ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].set_title('Percent Difference between Antidepressants and Controls \n (Predicted) (Cohort Level)')
+    ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].set_title('Percent Difference between Antidepressants and Controls \n(Ground Truth) (Cohort Level)')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].set_title('Percent Difference between Predicted and Ground Truth \n(Cohort Level)')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].set_title('Percent Difference between Predicted and Ground Truth \n(Subject Level)')
+    ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].set_xlabel('Frequency (Hz)')
+    ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].set_xlabel('Frequency (Hz)')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].set_xlabel('Frequency (Hz)')
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].set_xlabel('Frequency (Hz)')
+    ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].set_ylim(-25,25)
+    ax[fold,PERCENT_DIFFERENCE_GT_FIGURE].set_ylim(-25,25)
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_DATASET_FIGURE].set_ylim(-25,25)
+    ax[fold,PERCENT_DIFFERENCE_RECONSTRUCTION_SUBJECT_FIGURE].set_ylim(-25,25)
+    ax[fold,PERCENT_DIFFERENCE_PREDICTED_FIGURE].set_ylim(-25,25)
+    
+    print(f'Subject level percent difference: {all_percent_diffs.mean():.2f} ± {all_percent_diffs.std():.2f}')
+    print(f'Dataset level percent difference: {all_errors_percent_diff_reconstruction_dataset.mean():.2f} ± {all_errors_percent_diff_reconstruction_dataset.std():.2f}')
+    print(f'Predicted level percent difference: {all_errors_percent_diff_pred.mean():.2f} ± {all_errors_percent_diff_pred.std():.2f}')
+    print(f'Ground truth level percent difference: {all_errors_percent_diff_gt.mean():.2f} ± {all_errors_percent_diff_gt.std():.2f}')
     plt.tight_layout()
     fig.savefig('percent_difference_per_fold.png', dpi=300, bbox_inches='tight')
     plt.close()
