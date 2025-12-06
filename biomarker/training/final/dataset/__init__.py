@@ -112,8 +112,8 @@ def parse_dataset_name(filepath):
         raise NotImplementedError
 
 
-_medication_data = load_json_with_datetime('../../../../data/medication_antidep.json')
-_dosage_data = load_json_with_datetime('../../../../data/dosage_antidep.json')
+_medication_data = load_json_with_datetime('../../../data/medication_antidep.json')
+_dosage_data = load_json_with_datetime('../../../data/dosage_antidep.json')
 
 
 
