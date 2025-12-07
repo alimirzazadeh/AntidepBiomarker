@@ -267,6 +267,9 @@ control_pwr_sleep = []
 antidep_pwr_sleep = [] 
 antidep_pwr_sleep_gt = [] 
 control_pwr_sleep_gt = [] 
+antidep_pwr_sleep_l1 = [] 
+control_pwr_sleep_l1 = [] 
+
 # Process antidepressant files
 for file in tqdm(all_antideps):
     dataset = get_dataset(file)
@@ -275,16 +278,21 @@ for file in tqdm(all_antideps):
     else:
         fold = int(random.randint(0, 3))
     mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
+    
     if mg is None or st is None:
         continue
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
-
+    mage_gt_norm = normalize_gt(mage_gt, dataset)
+    mage2_sleep_gt_norm = naive_power_post_onset(mage_gt_norm, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
+    
     if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
         antidep_pwr_sleep.append(mage2_sleep)
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
         antidep_pwr_sleep_gt.append(mage2_sleep_gt)
+        bp() 
+        antidep_pwr_sleep_l1.append(np.abs(np.mean(mage2_sleep,1) - np.mean(mage2_sleep_gt_norm,1)))
 # Process control files
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
@@ -299,38 +307,51 @@ for file in tqdm(all_controls):
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4]) 
+    mage_gt_norm = normalize_gt(mage_gt, dataset)
+    mage2_sleep_gt_norm = naive_power_post_onset(mage_gt_norm, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
         control_pwr_sleep.append(mage2_sleep)
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
         control_pwr_sleep_gt.append(mage2_sleep_gt)
+        control_pwr_sleep_l1.append(np.abs(np.mean(mage2_sleep,1) - np.mean(mage2_sleep_gt_norm,1)))
 # Convert to numpy arrays
 control_pwr_sleep = np.stack(control_pwr_sleep)
 antidep_pwr_sleep = np.stack(antidep_pwr_sleep)
 antidep_pwr_sleep_gt = np.stack(antidep_pwr_sleep_gt)
 control_pwr_sleep_gt = np.stack(control_pwr_sleep_gt)
+antidep_pwr_sleep_l1 = np.stack(antidep_pwr_sleep_l1)
+control_pwr_sleep_l1 = np.stack(control_pwr_sleep_l1)
 
 
 
 # Calculate percent differences with bootstrap
 whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep)
 whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt)
+l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]), 0)
 if True:
-    fig, ax = plt.subplots(figsize=(18, 4))
-    ax.plot(smooth(whole_sleep2, 3), label='Sleep EEG Reconstruction', ls='dashed', color='black')
-    ax.fill_between(np.arange(0, 256), smooth(whole_sleep_lower, 3), smooth(whole_sleep_upper, 3), alpha=0.1, color='black')
-    ax.plot(smooth(whole_sleep_gt2, 3), label='Sleep EEG', ls='dashed', color='gray')
-    ax.fill_between(np.arange(0, 256), smooth(whole_sleep_gt_lower, 3), smooth(whole_sleep_gt_upper, 3), alpha=0.1, color='black')
-    ax.axhline(y=0, color='gray', ls='dotted', alpha=0.3)
+    fig, ax = plt.subplots(3,figsize=(18, 12),sharex=True)
+    ax[0].plot(smooth(whole_sleep2, 3), label='Sleep', ls='dashed', color='black')
+    ax[1].plot(smooth(l1_error, 3), label='L1 Error', ls='dashed', color='black')
+    ax[1].set_ylim(0,0.1)
+    ax[2].plot(smooth(whole_sleep2, 3), label='Sleep EEG Reconstruction', ls='dashed', color='black')
+    ax[2].fill_between(np.arange(0, 256), smooth(whole_sleep_lower, 3), smooth(whole_sleep_upper, 3), alpha=0.1, color='black')
+    ax[2].plot(smooth(whole_sleep_gt2, 3), label='Sleep EEG', ls='dashed', color='gray')
+    ax[2].fill_between(np.arange(0, 256), smooth(whole_sleep_gt_lower, 3), smooth(whole_sleep_gt_upper, 3), alpha=0.1, color='black')
+    ax[2].axhline(y=0, color='gray', ls='dotted', alpha=0.3)
     for x in [1, 4, 8, 12, 16]:
-        ax.axvline(x * 8, color='gray', ls='dotted', alpha=0.3)
+        ax[2].axvline(x * 8, color='gray', ls='dotted', alpha=0.3)
 
-    ax.set_xlim(-0.01, 256.01)
-    ax.set_xticks(np.arange(0, 257, 32))
-    ax.set_xticklabels(np.arange(0, 33, 4))
-    ax.set_xlabel('Frequency (Hz)')
-    ax.set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
-    ax.legend()
-    plt.savefig(f'check_reconstruction_error_v3.png', dpi=300, bbox_inches='tight')
+    ax[2].set_xlim(-0.01, 256.01)
+    ax[2].set_xticks(np.arange(0, 257, 32))
+    ax[2].set_xticklabels(np.arange(0, 33, 4))
+    ax[0].set_xlabel('Frequency (Hz)')
+    ax[1].set_xlabel('Frequency (Hz)')
+    ax[2].set_xlabel('Frequency (Hz)')
+    ax[0].set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
+    ax[2].set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
+    ax[1].set_ylabel('Mean Absolute Error (L1)')
+    ax[2].legend()
+    plt.savefig(f'check_reconstruction_error_v4.png', dpi=300, bbox_inches='tight')
     plt.close()
 bp() 
 print('done')
