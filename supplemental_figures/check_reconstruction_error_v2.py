@@ -17,6 +17,7 @@ age_tolerance = 5
 df = pd.read_csv('../data/master_dataset.csv')
 df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
+df = df.groupby('filename').agg('first').reset_index()
 print(df.shape)
 
 def normalize_gt(eeg, dataset ):
