@@ -271,9 +271,9 @@ control_pwr_sleep_gt = []
 for file in tqdm(all_antideps):
     dataset = get_dataset(file)
     if dataset != 'wsc':
-        fold = df[df['filename'] == file]['fold'].values[0]
+        fold = int(df[df['filename'] == file]['fold'].values[0])
     else:
-        fold = random.randint(0, 3)
+        fold = int(random.randint(0, 3))
     mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
     if mg is None or st is None:
         continue
@@ -289,9 +289,9 @@ for file in tqdm(all_antideps):
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
     if dataset != 'wsc':
-        fold = df[df['filename'] == file]['fold'].values[0]
+        fold = int(df[df['filename'] == file]['fold'].values[0])
     else:
-        fold = random.randint(0, 3)
+        fold = int(random.randint(0, 3))
     mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
     
     if mg is None or st is None:
