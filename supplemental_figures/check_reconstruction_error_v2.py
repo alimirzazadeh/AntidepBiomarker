@@ -162,7 +162,7 @@ def get_mage_stage(filename, gt=True, dataset=None):
     stage = stage['data'][::int(30*stage['fs'])]
     stage = process_stages(stage)
     mage = np.load(os.path.join(MAGE_PREFIX, filename))[key]
-    bp() 
+
     if mage.shape[1] < 4 * 60 * 2 or len(stage) < 4*60*2:
         print('less than 4 hrs mage')
         return None, None
