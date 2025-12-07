@@ -142,7 +142,7 @@ def process_stages(stages):
     mapping = np.array([0, 1, 2, 3, 3, 4, 0, 0, 0, 0, 0], np.int64)
     return mapping[stages]
 
-def get_mage_stage(filename, gt=True, dataset='stages'):
+def get_mage_stage(filename, gt=True, dataset=None):
     filename = filename.split('/')[-1]
     STAGE_PREFIX = f'/data/netmit/wifall/ADetect/data/{dataset}/stage/'
     MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/c4_m1_multitaper/{dataset}/'
@@ -162,7 +162,7 @@ def get_mage_stage(filename, gt=True, dataset='stages'):
     stage = stage['data'][::int(30*stage['fs'])]
     stage = process_stages(stage)
     mage = np.load(os.path.join(MAGE_PREFIX, filename))[key]
-    
+    bp() 
     if mage.shape[1] < 4 * 60 * 2 or len(stage) < 4*60*2:
         print('less than 4 hrs mage')
         return None, None
@@ -276,7 +276,7 @@ for file in tqdm(all_antideps):
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
-    bp() 
+
     if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
         antidep_pwr_sleep.append(mage2_sleep)
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
