@@ -131,8 +131,8 @@ df = df.groupby(['pid', 'label'], as_index=False).agg(
 
 ## Now we are going to bin the ages into size 10 years 
 df['age_bin'] = pd.cut(df['mit_age'], bins=range(0, 100, 10), right=False)
-bmi_bins = [0, 15, 20, 25, 30, 35, 40, 45, 100]
-df['bmi_bin'] = pd.cut(df['mit_bmi'], bins=range(10, 50, 5), right=False)
+bmi_bins = [0, 18.5, 25, 30, 35, 40, 100]
+df['bmi_bin'] = pd.cut(df['mit_bmi'], bins=bmi_bins, right=False)
 ## Calculat the AUROC for each age bin 
 age_results = {}
 gender_results = {}
@@ -241,6 +241,7 @@ for i, bmi_bin in enumerate(bmi_bins):
     ## add N= on top of each bar
     n_samples = len(df_bmi[df_bmi["bmi_bin"] == bmi_bin])
     ax3.text(i, upper_ci + 0.01, f'N={n_samples}', ha='center', va='bottom')
+    print(bmi_bin.left, '- ' + str(bmi_bin.right) +': '+ str(np.round(mean_auroc, 2)), '[', np.round(lower_ci, 2), '-', np.round(upper_ci, 2), ']')
     # Add n= on top of each bar
     n_samples = len(df_bmi[df_bmi["bmi_bin"] == bmi_bin])
     # ax3.text(i, mean_auroc + 0.01, f'n={n_samples}', ha='center', va='bottom')
@@ -260,5 +261,71 @@ ax2.set_xticklabels(['Male', 'Female'])
 ax2.set_xlim(-0.5, 1.5)
 plt.tight_layout()
 plt.savefig('fairness_analysis.png', dpi=300, bbox_inches='tight')
+
+
+if True:
+    from scipy.stats import ttest_ind
+    ## repeat zung_bins 
+    bmi_bins = df_bmi['bmi_bin'].unique()
+    bins = [0, 18.5, 25, 30, 35, 40, 100]
+    labels = ['<18.5', '18.5-25', '25-30', '30-35', '35-40', '>40']
+    df_bmi['bmi_bin'] = pd.cut(df_bmi['mit_bmi'], bins=bins, labels=labels, include_lowest=True)
+    df_bmi['Group'] = df_bmi['label'].apply(lambda x: 'Control' if x == 0 else 'Antidep')
+    
+    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+    
+    # Prepare data for boxplots: controls first, then antidepressants
+    # Add group labels
+
+    
+    # Create a column for x-axis ordering: controls first, then antidepressants
+    # We'll create a combined label that includes both group and bin
+    df_bmi['BMI Bin'] = df_bmi.apply(
+        lambda x: f"{x['Group']}\n{x['bmi_bin']}", axis=1
+    )
+    
+    # Create order list: controls first (ordered by zung_index_bin), then antidepressants
+    order_list = []
+    for label in labels:
+        order_list.append(f'Control\n{label}')
+    for label in labels:
+        order_list.append(f'Antidep\n{label}')
+    
+    # Create boxplots using seaborn
+    sns.boxplot(data=df_bmi, x='BMI Bin', y='pred', order=order_list,
+                palette='Greens', ax=ax, showfliers=False)
+    
+    # Add N labels above each boxplot (above the median line)
+    for i, x_label in enumerate(order_list):
+        subset = df_bmi[df_bmi['BMI Bin'] == x_label]['pred'].dropna()
+        if i < len(labels):
+            ## compute t test p value against positives 
+            ttest = ttest_ind(subset.values, df_bmi[df_bmi['Group'] == 'Antidepressant']['pred'].dropna().values)
+            print(f'T-test p value for {x_label} vs positives: {ttest.pvalue:.4e}')
+        else:
+            ## compute t test p value against negatives
+            ttest = ttest_ind(subset.values, df_bmi[df_bmi['Group'] == 'Control']['pred'].dropna().values)
+            print(f'T-test p value for {x_label} vs negatives: {ttest.pvalue:.4e}')
+        if len(subset) > 0:
+            n = len(subset)
+            median_val = subset.median()
+            ax.text(i, median_val + 0.01, f'N={n}', ha='center', va='bottom', fontsize=9)
+    p_value_grid = np.zeros((len(labels), len(labels)))
+    for i, x_label in enumerate(order_list):
+        if not x_label.startswith('Control'):
+            continue
+        subset = df_bmi[df_bmi['BMI Bin'] == x_label]['pred'].dropna()
+        for j, x_label2 in enumerate(order_list):
+            if not x_label2.startswith('Antidep'):
+                continue
+            subset2 = df_bmi[df_bmi['BMI Bin'] == x_label2]['pred'].dropna()
+            ttest = ttest_ind(subset.values, subset2.values)
+            p_value_grid[i % len(labels), j % len(labels)] = ttest.pvalue
+    p_value_grid = pd.DataFrame(p_value_grid, index=labels, columns=labels).T
+    print(p_value_grid.max())
+    ax.set_ylabel('Model Prediction')
+    ax.set_xlabel('BMI Group')
+    plt.tight_layout()
+    plt.savefig('fairness_analysis_bmi.png', dpi=300, bbox_inches='tight')
 
 print('done')

@@ -155,20 +155,42 @@ if True:
     # Add N labels above each boxplot (above the median line)
     for i, x_label in enumerate(order_list):
         subset = df_combined[df_combined['Zung Index Bin'] == x_label]['pred'].dropna()
+        if i < len(labels):
+            ## compute t test p value against positives 
+            ttest = ttest_ind(subset.values, df_pos['pred'].dropna().values)
+            print(f'T-test p value for {x_label} vs positives: {ttest.pvalue:.4e}')
+        else:
+            ## compute t test p value against negatives
+            ttest = ttest_ind(subset.values, df_neg['pred'].dropna().values)
+            print(f'T-test p value for {x_label} vs negatives: {ttest.pvalue:.4e}')
         if len(subset) > 0:
             n = len(subset)
             median_val = subset.median()
             ax.text(i, median_val + 0.01, f'N={n}', ha='center', va='bottom', fontsize=9)
-    
+    p_value_grid = np.zeros((len(labels), len(labels)))
+    for i, x_label in enumerate(order_list):
+        if not x_label.startswith('Control'):
+            continue
+        subset = df_combined[df_combined['Zung Index Bin'] == x_label]['pred'].dropna()
+        for j, x_label2 in enumerate(order_list):
+            if not x_label2.startswith('Antidepressant'):
+                continue
+            subset2 = df_combined[df_combined['Zung Index Bin'] == x_label2]['pred'].dropna()
+            ttest = ttest_ind(subset.values, subset2.values)
+            p_value_grid[i % len(labels), j % len(labels)] = ttest.pvalue
+    p_value_grid = pd.DataFrame(p_value_grid, index=labels, columns=labels).T
+    print(p_value_grid)
+    bp() 
     # Calculate and add Pearson correlations
     corr_neg, pval_neg = scipy.stats.pearsonr(df_neg['zung_index'], df_neg['pred'])
     corr_pos, pval_pos = scipy.stats.pearsonr(df_pos['zung_index'], df_pos['pred'])
     corr_all, pval_all = scipy.stats.pearsonr(df['zung_index'], df['pred'])
     print(f'Pearson correlation: {corr_all:.2f} (p{(pval_all)})')
     # Add correlation text
-    ax.text(0.02, 0.98, f'Control: r={corr_neg:.2f} (p{format_pvalue(pval_neg)}) \nAntidepressant: r={corr_pos:.2f} (p{format_pvalue(pval_pos)})', 
-            fontsize=11, transform=ax.transAxes, verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    # ax.text(0.02, 0.98, f'Control: r={corr_neg:.2f} (p{format_pvalue(pval_neg)}) \nAntidepressant: r={corr_pos:.2f} (p{format_pvalue(pval_pos)})', 
+    #         fontsize=11, transform=ax.transAxes, verticalalignment='top',
+    #         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
     # ax.text(0.98, 0.98, f'Antidepressant: r={corr_pos:.2f} (p{format_pvalue(pval_pos)})', 
     #         fontsize=11, transform=ax.transAxes, verticalalignment='top', horizontalalignment='right',
     #         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
