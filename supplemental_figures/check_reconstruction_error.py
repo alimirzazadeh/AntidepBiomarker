@@ -143,8 +143,15 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
     gt = np.load(os.path.join(gt_dir, file))['data']
     pred = np.load(os.path.join(pred_dir, file))['pred']
     if relative:
+        ## transform back from log, compute relative power, then transform back to log
+        bp() 
+        gt = np.exp(gt)
+        pred = np.exp(pred)
         gt = gt / gt.mean(1).sum() 
         pred = pred / pred.mean(1).sum()
+        gt = np.log(gt)
+        pred = np.log(pred)
+    
     gt = normalize_gt(gt, dataset)
     if method == 'l1':
         error = calculate_l1_error(gt.mean(1), pred.mean(1))

@@ -20,7 +20,7 @@ from tqdm import tqdm
 from ipdb import set_trace as bp
 
 CSV_DIR = '../data/'
-def load_and_prepare_data():
+def load_and_prepare_data(balanced=False):
     """
     Load and prepare all datasets for analysis.
     
@@ -48,6 +48,17 @@ def load_and_prepare_data():
     labels = labels.groupby('filename', as_index=False).agg(
         lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
     )
+    
+    if balanced:
+        all_rows = [] 
+        for dataset in labels['dataset'].unique():
+            total_positive = int(labels[labels['dataset'] == dataset]['label'].sum())
+            positive_labels = labels[labels['dataset'] == dataset][labels['label'] == 1].copy() 
+            negative_labels = labels[labels['dataset'] == dataset][labels['label'] == 0].copy() 
+            negative_labels = negative_labels.sample(n=total_positive, replace=False)
+            all_rows.append(pd.concat([positive_labels, negative_labels])) 
+
+        labels = pd.concat(all_rows).reset_index(drop=True)
     
     # Clean participant IDs across datasets
     for dataset in ['wsc', 'mros', 'shhs']:
@@ -549,7 +560,7 @@ def main():
     
     # Load and prepare data
     print("\n1. Loading and preparing datasets...")
-    df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data()
+    df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data(balanced=True)
     
     # Run cross-validation
     print("\n2. Running 4-fold cross-validation...")
