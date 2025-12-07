@@ -173,7 +173,7 @@ def get_mage_stage(filename, gt=True, dataset=None):
             return None, None
     stage = stage[:mage.shape[1]]
     if gt:
-        return mage, mage_gt, stage
+        return mage, mage_gt[:,:mage.shape[1]], stage
     return mage, None, stage
 def mean_percent_difference(observed, expected):
     a = observed
