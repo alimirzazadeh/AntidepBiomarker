@@ -7,7 +7,7 @@ from tqdm import tqdm
 import scipy.stats
 from numpy import convolve
 from ipdb import set_trace as bp 
-
+import random 
 # Configuration
 datasets = ['mros','wsc','shhs','cfs']
 num_matches = 3
@@ -15,7 +15,7 @@ age_tolerance = 5
 
 # File paths
 df = pd.read_csv('../data/master_dataset.csv')
-df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender']]
+df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
 df = df.groupby('filename').agg('first').reset_index()
 print(df.shape)
@@ -99,7 +99,7 @@ def normalize_gt(eeg, dataset ):
     eeg = (eeg - 0.5) / 0.5
     return eeg
 
-
+## fix the fold issue 
 
 def pearsonr(x, y, return_pval=False):
     nans = np.isnan(x) | np.isnan(y)
@@ -142,10 +142,10 @@ def process_stages(stages):
     mapping = np.array([0, 1, 2, 3, 3, 4, 0, 0, 0, 0, 0], np.int64)
     return mapping[stages]
 
-def get_mage_stage(filename, gt=True, dataset=None):
+def get_mage_stage(filename, gt=True, dataset=None, fold=0):
     filename = filename.split('/')[-1]
     STAGE_PREFIX = f'/data/netmit/wifall/ADetect/data/{dataset}/stage/'
-    MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/MAGE/{dataset}_new/mage/cv_0/'
+    MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/MAGE/{dataset}_new/mage/cv_{fold}/'
     if gt:
         gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
         gt_dir = gt_path.replace('DATASET',dataset)
@@ -153,9 +153,9 @@ def get_mage_stage(filename, gt=True, dataset=None):
             gt_dir = gt_path.replace('DATASET',dataset+'_new')
         if not os.path.exists(gt_dir):
             print(f'{dataset} not found')
-            return None, None
+            return None, None, None
         mage_gt = np.load(os.path.join(gt_dir, filename))['data']
-        mage_gt = normalize_gt(mage_gt, dataset)
+        # mage_gt = normalize_gt(mage_gt, dataset)
     key = 'pred'
     
     stage = np.load(os.path.join(STAGE_PREFIX, filename))
@@ -270,7 +270,11 @@ control_pwr_sleep_gt = []
 # Process antidepressant files
 for file in tqdm(all_antideps):
     dataset = get_dataset(file)
-    mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset)
+    if dataset != 'wsc':
+        fold = df[df['filename'] == file]['fold'].values[0]
+    else:
+        fold = random.randint(0, 3)
+    mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
     if mg is None or st is None:
         continue
     
@@ -284,7 +288,11 @@ for file in tqdm(all_antideps):
 # Process control files
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
-    mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset)
+    if dataset != 'wsc':
+        fold = df[df['filename'] == file]['fold'].values[0]
+    else:
+        fold = random.randint(0, 3)
+    mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
     
     if mg is None or st is None:
         continue
