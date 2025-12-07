@@ -298,7 +298,8 @@ for file in tqdm(all_controls):
 # Convert to numpy arrays
 control_pwr_sleep = np.stack(control_pwr_sleep)
 antidep_pwr_sleep = np.stack(antidep_pwr_sleep)
-
+antidep_pwr_sleep_gt = np.stack(antidep_pwr_sleep_gt)
+control_pwr_sleep_gt = np.stack(control_pwr_sleep_gt)
 
 
 
