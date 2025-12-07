@@ -142,6 +142,7 @@ def normalize_gt(eeg, dataset ):
 def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='l1', relative=False):
     gt = np.load(os.path.join(gt_dir, file))['data']
     pred = np.load(os.path.join(pred_dir, file))['pred']
+    gt = normalize_gt(gt, dataset)
     if relative:
         ## transform back from log, compute relative power, then transform back to log
         bp() 
@@ -152,7 +153,6 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
         gt = np.log(gt)
         pred = np.log(pred)
     
-    gt = normalize_gt(gt, dataset)
     if method == 'l1':
         error = calculate_l1_error(gt.mean(1), pred.mean(1))
     elif method == 'l2':
