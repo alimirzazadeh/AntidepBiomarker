@@ -145,7 +145,7 @@ def process_stages(stages):
 def get_mage_stage(filename, gt=True, dataset=None):
     filename = filename.split('/')[-1]
     STAGE_PREFIX = f'/data/netmit/wifall/ADetect/data/{dataset}/stage/'
-    MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/c4_m1_multitaper/{dataset}/'
+    MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/MAGE/{dataset}/mage/cv_0/'
     if gt:
         gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
         gt_dir = gt_path.replace('DATASET',dataset)
