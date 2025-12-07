@@ -139,9 +139,12 @@ def normalize_gt(eeg, dataset ):
     eeg = (eeg - 0.5) / 0.5
     return eeg
 
-def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='l1'):
+def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='l1', relative=False):
     gt = np.load(os.path.join(gt_dir, file))['data']
     pred = np.load(os.path.join(pred_dir, file))['pred']
+    if relative:
+        gt = gt / gt.mean(1).sum() 
+        pred = pred / pred.mean(1).sum()
     gt = normalize_gt(gt, dataset)
     if method == 'l1':
         error = calculate_l1_error(gt.mean(1), pred.mean(1))
@@ -184,7 +187,7 @@ def main4():
         all_labels = [] 
         all_percent_diffs = []
         for file in tqdm(all_files):
-            percent_diff, gt, pred = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir, method='percent_diff')
+            percent_diff, gt, pred = calculate_reconstruction_error(file, 'wsc', gt_dir=gt_dir, pred_dir=pred_dir, method='percent_diff', relative=True)
             all_percent_diffs.append(percent_diff)
             all_gts.append(gt)
             all_preds.append(pred)
@@ -238,7 +241,7 @@ def main4():
     print(f'Predicted level percent difference: {all_errors_percent_diff_pred.mean():.2f} ± {all_errors_percent_diff_pred.std():.2f}')
     print(f'Ground truth level percent difference: {all_errors_percent_diff_gt.mean():.2f} ± {all_errors_percent_diff_gt.std():.2f}')
     plt.tight_layout()
-    fig.savefig('percent_difference_per_fold.png', dpi=300, bbox_inches='tight')
+    fig.savefig('percent_difference_per_fold_relative.png', dpi=300, bbox_inches='tight')
     plt.close()
 def main3():
     fig,ax = plt.subplots(4, 5, figsize=(20, 16))
