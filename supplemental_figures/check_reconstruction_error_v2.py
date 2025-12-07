@@ -156,7 +156,7 @@ def get_mage_stage(filename, gt=True, dataset=None):
             return None, None
         mage_gt = np.load(os.path.join(gt_dir, filename))['data']
         mage_gt = normalize_gt(mage_gt, dataset)
-    key = 'data'
+    key = 'pred'
     
     stage = np.load(os.path.join(STAGE_PREFIX, filename))
     stage = stage['data'][::int(30*stage['fs'])]
