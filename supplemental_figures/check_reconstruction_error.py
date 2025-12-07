@@ -145,7 +145,6 @@ def calculate_reconstruction_error(file, dataset, gt_dir, pred_dir, method:str='
     gt = normalize_gt(gt, dataset)
     if relative:
         ## transform back from log, compute relative power, then transform back to log
-        bp() 
         gt = np.exp(gt)
         pred = np.exp(pred)
         gt = gt / gt.mean(1).sum() 
