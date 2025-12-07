@@ -31,6 +31,7 @@ def load_and_prepare_data():
     # Load datasets
     df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
     df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'rebuttal_nohchsrf_inference_v6emb_3920_all.csv'))
     labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
     df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
     

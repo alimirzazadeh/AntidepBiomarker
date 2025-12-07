@@ -218,7 +218,7 @@ def create_visualization(groups, save_path):
     })
     
     # Create figure
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(7, 4))
     
     # Define order for consistent presentation
     order = ['No Psycho\ntropic', 'Anti-\ncholinergics', 'Hypnotics', 'Anti-\nconvulsants', 'Benzo-\ndiazepines',
@@ -266,7 +266,7 @@ def create_visualization(groups, save_path):
     
     # Customize plot
     ax.set_ylim(0, 1)
-    ax.set_ylabel('Model Prediction')
+    ax.set_ylabel('Model Score')
     ax.set_xlabel('Medication Type')
     plt.tight_layout()
     

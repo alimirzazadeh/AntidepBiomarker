@@ -159,7 +159,7 @@ def create_patient_trajectory_plot(cohorts, titles, save_path):
     
     # Add overall figure labels
     fig.supxlabel('Date (Point=Night, Tick=Month)', y=0.05, fontsize=12)
-    fig.supylabel('Model Prediction', x=0.09, fontsize=12)
+    fig.supylabel('Model Score', x=0.09, fontsize=12)
     
     # Adjust layout and save
     plt.tight_layout()

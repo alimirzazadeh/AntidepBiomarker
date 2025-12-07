@@ -101,7 +101,7 @@ def create_visualization(df_per_night, df_per_patient):
     total_patients = df_per_patient.shape[0]
     
     # Create figure
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+    fig, ax = plt.subplots(1, 1, figsize=(7, 4))
     
     # Create color palette
     n_categories = len(df_per_patient['Dosage (Proportion of Standard Dose)'].unique())
@@ -118,9 +118,9 @@ def create_visualization(df_per_night, df_per_patient):
     )
     
     # Set labels and title
-    ax.set_title(f'Dosage Prediction Per Patient (N={total_patients} patients, {total_nights} nights)')
+    ax.set_title(f'Model Score Per Patient (N={total_patients} patients, {total_nights} nights)')
     ax.set_ylim(0, 1)
-    ax.set_ylabel('Model Prediction')
+    ax.set_ylabel('Model Score')
     
     # Adjust layout and save
     plt.tight_layout()
