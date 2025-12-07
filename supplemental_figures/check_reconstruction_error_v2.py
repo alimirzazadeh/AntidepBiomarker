@@ -291,8 +291,7 @@ for file in tqdm(all_antideps):
         antidep_pwr_sleep.append(mage2_sleep)
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
         antidep_pwr_sleep_gt.append(mage2_sleep_gt)
-        bp() 
-        antidep_pwr_sleep_l1.append(np.abs(np.mean(mage2_sleep,1) - np.mean(mage2_sleep_gt_norm,1)))
+        antidep_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
 # Process control files
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
@@ -313,7 +312,7 @@ for file in tqdm(all_controls):
         control_pwr_sleep.append(mage2_sleep)
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
         control_pwr_sleep_gt.append(mage2_sleep_gt)
-        control_pwr_sleep_l1.append(np.abs(np.mean(mage2_sleep,1) - np.mean(mage2_sleep_gt_norm,1)))
+        control_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
 # Convert to numpy arrays
 control_pwr_sleep = np.stack(control_pwr_sleep)
 antidep_pwr_sleep = np.stack(antidep_pwr_sleep)
