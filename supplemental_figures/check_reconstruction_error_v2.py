@@ -330,7 +330,7 @@ if True:
     ax.set_xlabel('Frequency (Hz)')
     ax.set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
     ax.legend()
-    plt.savefig(f'check_reconstruction_error_v2.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'check_reconstruction_error_v3.png', dpi=300, bbox_inches='tight')
     plt.close()
 bp() 
 print('done')
