@@ -180,7 +180,7 @@ if True:
             p_value_grid[i % len(labels), j % len(labels)] = ttest.pvalue
     p_value_grid = pd.DataFrame(p_value_grid, index=labels, columns=labels).T
     print(p_value_grid)
-    bp() 
+    
     # Calculate and add Pearson correlations
     corr_neg, pval_neg = scipy.stats.pearsonr(df_neg['zung_index'], df_neg['pred'])
     corr_pos, pval_pos = scipy.stats.pearsonr(df_pos['zung_index'], df_pos['pred'])
@@ -195,11 +195,11 @@ if True:
     #         fontsize=11, transform=ax.transAxes, verticalalignment='top', horizontalalignment='right',
     #         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
-    ax.set_ylabel('Model Prediction', fontsize=12)
+    ax.set_ylabel('Model Score', fontsize=12)
     ax.set_ylim(0, 1)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     plt.tight_layout()
-    plt.savefig('check_mdd_confound_v2.png', dpi=300, bbox_inches='tight')
+    plt.savefig('check_mdd_confound_v3.png', dpi=300, bbox_inches='tight')
 
     # plt.savefig('check_mdd_confound_v2.png', dpi=300, bbox_inches='tight')
 

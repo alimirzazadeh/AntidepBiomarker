@@ -323,7 +323,7 @@ if True:
             p_value_grid[i % len(labels), j % len(labels)] = ttest.pvalue
     p_value_grid = pd.DataFrame(p_value_grid, index=labels, columns=labels).T
     print(p_value_grid.max())
-    ax.set_ylabel('Model Prediction')
+    ax.set_ylabel('Model Score')
     ax.set_xlabel('BMI Group')
     plt.tight_layout()
     plt.savefig('fairness_analysis_bmi.png', dpi=300, bbox_inches='tight')
