@@ -165,12 +165,12 @@ def get_mage_stage(filename, gt=True, dataset=None):
 
     if mage.shape[1] < 4 * 60 * 2 or len(stage) < 4*60*2:
         print('less than 4 hrs mage')
-        return None, None
+        return None, None, None
     
     if mage.shape[1] != len(stage):
         if not len(stage) > mage.shape[1]:
             print('weird, stage is less than mage shape', len(stage), mage.shape[1])
-            return None, None
+            return None, None, None
     stage = stage[:mage.shape[1]]
     if gt:
         return mage, mage_gt[:,:mage.shape[1]], stage
