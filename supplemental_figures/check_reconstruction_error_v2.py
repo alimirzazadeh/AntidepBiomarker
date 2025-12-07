@@ -14,9 +14,10 @@ num_matches = 3
 age_tolerance = 5 
 
 # File paths
-df = pd.read_csv('labels.csv')
+df = pd.read_csv('../data/master_dataset.csv')
+df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
-
+print(df.shape)
 
 def normalize_gt(eeg, dataset ):
     aligned_stats = {
