@@ -73,19 +73,22 @@ print('Total merged data: ', df.shape[0])
 
 antidep_plus_benzo = df[(df['label'] == 1) & (df['benzos'] == True)].copy()
 antidep_plus_anticonvulsant = df[(df['label'] == 1) & (df['convuls'] == True)].copy()
+antidep_plus_antipsychotic = df[(df['label'] == 1) & (df['antipsycho'] == True)].copy()
 
-fig, ax = plt.subplots(figsize=(8, 6))
+fig, ax = plt.subplots(figsize=(10, 6))
 g0 = controls['pred'].values 
 g1 = single_therapy['pred'].values 
 g2 = multi_therapy['pred'].values 
 g3 = antidep_plus_benzo['pred'].values 
 g4 = antidep_plus_anticonvulsant['pred'].values 
-cohort = len(g0) * ['Controls'] + len(g1) * ['Single\nAntidepressant'] + len(g2) * ['Multi-\nAntidepressant'] + len(g3) * ['Antidepressant+\nBenzodiazepine'] + len(g4) * ['Antidepressant+\nAnticonvulsant']
+g5 = antidep_plus_antipsychotic['pred'].values 
+cohort = len(g0) * ['Controls'] + len(g1) * ['Single\nAntidepressant'] + len(g2) * ['Multi-\nAntidepressant'] + len(g3) * ['Antidepressant+\nBenzodiazepine'] + len(g4) * ['Antidepressant+\nAnticonvulsant'] + len(g5) * ['Antidepressant+\nAntipsychotic']
 df_plot = pd.DataFrame({
     'cohort': cohort,
-    'pred': np.concatenate([g0, g1, g2, g3, g4])
+    'pred': np.concatenate([g0, g1, g2, g3, g4, g5])
 })
-sns.boxplot(x='cohort', y='pred', data=df_plot, showfliers=False, palette='Greens', order=['Controls', 'Single\nAntidepressant', 'Antidepressant+\nAnticonvulsant', 'Antidepressant+\nBenzodiazepine', 'Multi-\nAntidepressant'], ax=ax)
+order = ['Controls', 'Single\nAntidepressant', 'Antidepressant+\nAnticonvulsant', 'Antidepressant+\nAntipsychotic', 'Antidepressant+\nBenzodiazepine', 'Multi-\nAntidepressant']
+sns.boxplot(x='cohort', y='pred', data=df_plot, showfliers=False, palette='Greens', order=order, ax=ax)
     # sns.boxplot(
     #     x="medication", y="pred", data=df_viz, 
     #     palette='Greens', ax=ax, order=order, showfliers=False
@@ -94,7 +97,7 @@ ax.set_ylabel('Model Score')
 ax.set_xlabel('Cohort')
 
 
-for cohort in ['Controls', 'Single\nAntidepressant', 'Antidepressant+\nBenzodiazepine', 'Multi-\nAntidepressant', 'Antidepressant+\nAnticonvulsant']:
+for i, cohort in enumerate(order):
     subset = df_plot[df_plot['cohort'] == cohort]
     ## print the median and the Q1 and Q3
     median = subset['pred'].median()
@@ -102,8 +105,8 @@ for cohort in ['Controls', 'Single\nAntidepressant', 'Antidepressant+\nBenzodiaz
     q3 = subset['pred'].quantile(0.75)
     print(f'{cohort}: Median={median:.2f}, IQR: [{q1:.2f}-{q3:.2f}]')
     n = subset.shape[0]
-    ax.text(cohort, median, f'N={n}', ha='center', va='bottom', fontsize=10)
-plt.savefig('cotherapy_analysis_snri.png', dpi=300, bbox_inches='tight')
+    ax.text(i, median + 0.01, f'N={n}', ha='center', va='bottom', fontsize=10)
+plt.savefig('cotherapy_analysis_snri_v2.png', dpi=300, bbox_inches='tight')
 
 # antidep_plus_benzo, all_antidep, multi_therapy, 
 
