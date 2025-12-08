@@ -20,6 +20,35 @@ df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground tr
 df = df.groupby('filename').agg('first').reset_index()
 print(df.shape)
 
+def get_post_onset_trend(mage, stage, which_stage=2):
+    if type(which_stage) is list:
+        is_n2 = np.zeros_like(stage).astype(bool)
+        for stg in which_stage:
+            is_n2 = is_n2 + (stage == stg)
+    else:    
+        is_n2 = (stage == which_stage)
+
+    if len(stage) == 0 or 2 not in stage:
+        return None
+    onset_idx = np.argwhere(stage > 0)[0][0]
+
+    if len(stage) > onset_idx + 6 * 60 * 2:
+        stage = stage[onset_idx:onset_idx + 6*60*2]
+        mage = mage[:, onset_idx:onset_idx + 6*60*2]
+        is_n2 = is_n2[onset_idx:onset_idx + 6*60*2]
+    else:
+        stage = stage[onset_idx:]
+        mage = mage[:, onset_idx:]
+        is_n2 = is_n2[onset_idx:]
+            
+    output = np.zeros((256, 6 * 60 * 2))
+    output[:] = np.nan 
+    res = mage[:, :len(stage)]
+    is_n2 = is_n2[:len(stage)]
+    res[:, ~is_n2] = np.nan 
+    output[:, :len(stage)] = res
+    return output 
+
 def normalize_gt(eeg, dataset ):
     aligned_stats = {
     "bwh": {
@@ -279,9 +308,13 @@ for file in tqdm(all_antideps):
     else:
         fold = int(random.randint(0, 3))
     mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
-    bp() 
+    
     if mg is None or st is None:
         continue
+    
+    post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    if post_onset is None:
+        continue 
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
@@ -304,6 +337,10 @@ for file in tqdm(all_controls):
     
     if mg is None or st is None:
         continue
+    
+    post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    if post_onset is None:
+        continue 
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4]) 
@@ -363,7 +400,7 @@ if True:
     ax[0].set_xlim(-0.01, 256.01)
     ax[1].set_xlim(-0.01, 256.01)
     ax[2].set_xlim(-0.01, 256.01)
-    plt.savefig(f'check_reconstruction_error_v4.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'check_reconstruction_error_v4_postonsetbug.png', dpi=300, bbox_inches='tight')
     plt.close()
-bp() 
+
 print('done')
