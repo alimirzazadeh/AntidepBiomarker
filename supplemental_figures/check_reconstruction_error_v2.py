@@ -312,8 +312,9 @@ for file in tqdm(all_antideps):
     if mg is None or st is None:
         continue
     
-    post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
-    if post_onset is None:
+    post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
+    post_onset2 = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    if post_onset is None or post_onset2 is None:
         continue 
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
