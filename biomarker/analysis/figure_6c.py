@@ -14,7 +14,7 @@ num_matches = 3
 age_tolerance = 5 
 
 # File paths
-df = pd.read_csv('../../data/labels.csv')
+df = pd.read_csv('~/2023/SIMON/Sleep-Research/temp_analysis/labels.csv')
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
 
 def pearsonr(x, y, return_pval=False):
@@ -282,7 +282,7 @@ for file in tqdm(all_antideps):
     mg, st = get_mage_stage(file, gt=True, dataset=dataset)
     if mg is None or st is None:
         continue
-    bp() 
+    #bp() 
     mage_nrem = naive_power_post_onset(mg, st, minutes=60, mean=True, which_stage=[1,2,3])
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage2_nrem = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3])
