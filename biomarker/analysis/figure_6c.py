@@ -376,7 +376,7 @@ ax11 = fig.add_subplot(gs[1, 1])
 ax = [[ax00, ax01], [ax10, ax11]]
 
 
-
+bp() 
 # Calculate percent differences with bootstrap
 whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep)
 whole_nrem2, whole_nrem_lower, whole_nrem_upper = bootstrap_percent_difference(antidep_pwr_nrem, control_pwr_nrem)
