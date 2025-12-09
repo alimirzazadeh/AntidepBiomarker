@@ -360,7 +360,7 @@ control_pwr_sleep_gt = np.stack(control_pwr_sleep_gt)
 antidep_pwr_sleep_l1 = np.stack(antidep_pwr_sleep_l1)
 control_pwr_sleep_l1 = np.stack(control_pwr_sleep_l1)
 
-
+bp() 
 
 # Calculate percent differences with bootstrap
 whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep)

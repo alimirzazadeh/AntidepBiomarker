@@ -13,6 +13,16 @@ from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 import scipy
 
+def get_significance_stars(pval):
+    if pval < 1e-10:
+        return '***'
+    elif pval < 0.001:
+        return '**'
+    elif pval < 0.05:
+        return '*'
+    else:
+        return 'ns'
+
 def format_pvalue(pvalue):
     """Format p-value as a string."""
     if pvalue < 0.00001:
@@ -135,51 +145,74 @@ if True:
     # Combine dataframes
     df_combined = pd.concat([df_neg, df_pos], ignore_index=True)
     
-    # Create a column for x-axis ordering: controls first, then antidepressants
-    # We'll create a combined label that includes both group and bin
-    df_combined['Zung Index Bin'] = df_combined.apply(
-        lambda x: f"{x['group']}\n{x['zung_index_bin']}", axis=1
-    )
-    
-    # Create order list: controls first (ordered by zung_index_bin), then antidepressants
-    order_list = []
-    for label in labels:
-        order_list.append(f'Control\n{label}')
-    for label in labels:
-        order_list.append(f'Antidepressant\n{label}')
-    
-    # Create boxplots using seaborn
-    sns.boxplot(data=df_combined, x='Zung Index Bin', y='pred', order=order_list,
-                palette='Greens', ax=ax, showfliers=False)
+    # Create boxplots using seaborn with hue for paired boxes
+    sns.boxplot(data=df_combined, x='zung_index_bin', y='pred', hue='group', 
+                order=labels, palette='Greens', ax=ax, showfliers=False, 
+                )
+    # Remove legend
+    ax.legend_.remove()
     
     # Add N labels above each boxplot (above the median line)
-    for i, x_label in enumerate(order_list):
-        subset = df_combined[df_combined['Zung Index Bin'] == x_label]['pred'].dropna()
-        if i < len(labels):
-            ## compute t test p value against positives 
-            ttest = ttest_ind(subset.values, df_pos['pred'].dropna().values)
-            print(f'T-test p value for {x_label} vs positives: {ttest.pvalue:.4e}')
-        else:
-            ## compute t test p value against negatives
-            ttest = ttest_ind(subset.values, df_neg['pred'].dropna().values)
-            print(f'T-test p value for {x_label} vs negatives: {ttest.pvalue:.4e}')
-        if len(subset) > 0:
-            n = len(subset)
-            median_val = subset.median()
-            ax.text(i, median_val + 0.01, f'N={n}', ha='center', va='bottom', fontsize=9)
-    p_value_grid = np.zeros((len(labels), len(labels)))
-    for i, x_label in enumerate(order_list):
-        if not x_label.startswith('Control'):
-            continue
-        subset = df_combined[df_combined['Zung Index Bin'] == x_label]['pred'].dropna()
-        for j, x_label2 in enumerate(order_list):
-            if not x_label2.startswith('Antidepressant'):
-                continue
-            subset2 = df_combined[df_combined['Zung Index Bin'] == x_label2]['pred'].dropna()
-            ttest = ttest_ind(subset.values, subset2.values)
-            p_value_grid[i % len(labels), j % len(labels)] = ttest.pvalue
-    p_value_grid = pd.DataFrame(p_value_grid, index=labels, columns=labels).T
-    print(p_value_grid)
+    # Get the positions of the boxes
+    box_positions = ax.get_xticks()
+    n_bins = len(labels)
+    
+    for i, label in enumerate(labels):
+        # Control box (left side of pair)
+        subset_control = df_combined[(df_combined['zung_index_bin'] == label) & 
+                                     (df_combined['group'] == 'Control')]['pred'].dropna()
+        if len(subset_control) > 0:
+            n = len(subset_control)
+            median_val = subset_control.median()
+            # Position is box_positions[i] - 0.2 (offset for paired boxes)
+            ax.text(box_positions[i] - 0.2, median_val + 0.01, f'N={n}', 
+                   ha='center', va='bottom', fontsize=9)
+        
+        # Antidepressant box (right side of pair)
+        subset_antidep = df_combined[(df_combined['zung_index_bin'] == label) & 
+                                     (df_combined['group'] == 'Antidepressant')]['pred'].dropna()
+        if len(subset_antidep) > 0:
+            n = len(subset_antidep)
+            median_val = subset_antidep.median()
+            # Position is box_positions[i] + 0.2 (offset for paired boxes)
+            ax.text(box_positions[i] + 0.2, median_val + 0.01, f'N={n}', 
+                   ha='center', va='bottom', fontsize=9)
+        
+        # Compute t-test between Control and Antidepressant for this bin
+        if len(subset_control) > 0 and len(subset_antidep) > 0:
+            ttest = ttest_ind(subset_control.values, subset_antidep.values)
+            print(f'T-test p value for {label} (Control vs Antidepressant): {ttest.pvalue:.4e}')
+            
+            # Draw significance bracket and stars
+            # Get max y-value from both boxes to position bracket above
+            max_y_control = subset_control.max() if len(subset_control) > 0 else 0
+            max_y_antidep = subset_antidep.max() if len(subset_antidep) > 0 else 0
+            max_y = max(max_y_control, max_y_antidep)
+            
+            # Position bracket slightly above the boxes
+            bracket_y = max_y + 0.05
+            sig_stars = get_significance_stars(ttest.pvalue)
+            
+            # Draw bracket
+            x1 = box_positions[i] - 0.2
+            x2 = box_positions[i] + 0.2
+            x_center = box_positions[i]
+            
+            # Draw horizontal line
+            ax.plot([x1, x2], [bracket_y, bracket_y], 'k-', linewidth=1)
+            # Draw vertical lines at ends
+            ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            # Add significance stars
+            ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=10)
+        
+        # Compute t-test against all positives/negatives
+        if len(subset_control) > 0:
+            ttest = ttest_ind(subset_control.values, df_pos['pred'].dropna().values)
+            print(f'T-test p value for Control {label} vs all positives: {ttest.pvalue:.4e}')
+        if len(subset_antidep) > 0:
+            ttest = ttest_ind(subset_antidep.values, df_neg['pred'].dropna().values)
+            print(f'T-test p value for Antidepressant {label} vs all negatives: {ttest.pvalue:.4e}')
     
     # Calculate and add Pearson correlations
     corr_neg, pval_neg = scipy.stats.pearsonr(df_neg['zung_index'], df_neg['pred'])
@@ -195,8 +228,9 @@ if True:
     #         fontsize=11, transform=ax.transAxes, verticalalignment='top', horizontalalignment='right',
     #         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
+    ax.set_xlabel('Zung Index Bin', fontsize=12)
     ax.set_ylabel('Model Score', fontsize=12)
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0, 1.1)  # Increased to accommodate significance brackets
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     plt.tight_layout()
     plt.savefig('check_mdd_confound_v3.png', dpi=300, bbox_inches='tight')

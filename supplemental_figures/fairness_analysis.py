@@ -5,6 +5,17 @@ from sklearn.metrics import roc_auc_score
 import seaborn as sns
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from scipy.stats import ttest_ind
+
+def get_significance_stars(pval):
+    if pval < 1e-10:
+        return '***'
+    elif pval < 0.001:
+        return '**'
+    elif pval < 0.05:
+        return '*'
+    else:
+        return 'ns'
 
 def bootstrap_auroc_ci(y_true, y_prob, n_bootstrap=1000, ci=0.95, random_state=42):
     """
@@ -264,67 +275,87 @@ plt.savefig('fairness_analysis.png', dpi=300, bbox_inches='tight')
 
 
 if True:
-    from scipy.stats import ttest_ind
     ## repeat zung_bins 
     bmi_bins = df_bmi['bmi_bin'].unique()
     bins = [0, 18.5, 25, 30, 35, 40, 100]
     labels = ['<18.5', '18.5-25', '25-30', '30-35', '35-40', '>40']
     df_bmi['bmi_bin'] = pd.cut(df_bmi['mit_bmi'], bins=bins, labels=labels, include_lowest=True)
-    df_bmi['Group'] = df_bmi['label'].apply(lambda x: 'Control' if x == 0 else 'Antidep')
+    df_bmi['Group'] = df_bmi['label'].apply(lambda x: 'Control' if x == 0 else 'Antidepressant')
     
     fig, ax = plt.subplots(1, 1, figsize=(12, 6))
     
-    # Prepare data for boxplots: controls first, then antidepressants
-    # Add group labels
-
-    
-    # Create a column for x-axis ordering: controls first, then antidepressants
-    # We'll create a combined label that includes both group and bin
-    df_bmi['BMI Bin'] = df_bmi.apply(
-        lambda x: f"{x['Group']}\n{x['bmi_bin']}", axis=1
-    )
-    
-    # Create order list: controls first (ordered by zung_index_bin), then antidepressants
-    order_list = []
-    for label in labels:
-        order_list.append(f'Control\n{label}')
-    for label in labels:
-        order_list.append(f'Antidep\n{label}')
-    
-    # Create boxplots using seaborn
-    sns.boxplot(data=df_bmi, x='BMI Bin', y='pred', order=order_list,
-                palette='Greens', ax=ax, showfliers=False)
+    # Create boxplots using seaborn with hue for paired boxes
+    sns.boxplot(data=df_bmi, x='bmi_bin', y='pred', hue='Group', 
+                order=labels, palette='Greens', ax=ax, showfliers=False)
+    # Remove legend
+    ax.legend_.remove()
     
     # Add N labels above each boxplot (above the median line)
-    for i, x_label in enumerate(order_list):
-        subset = df_bmi[df_bmi['BMI Bin'] == x_label]['pred'].dropna()
-        if i < len(labels):
-            ## compute t test p value against positives 
-            ttest = ttest_ind(subset.values, df_bmi[df_bmi['Group'] == 'Antidepressant']['pred'].dropna().values)
-            print(f'T-test p value for {x_label} vs positives: {ttest.pvalue:.4e}')
-        else:
-            ## compute t test p value against negatives
-            ttest = ttest_ind(subset.values, df_bmi[df_bmi['Group'] == 'Control']['pred'].dropna().values)
-            print(f'T-test p value for {x_label} vs negatives: {ttest.pvalue:.4e}')
-        if len(subset) > 0:
-            n = len(subset)
-            median_val = subset.median()
-            ax.text(i, median_val + 0.01, f'N={n}', ha='center', va='bottom', fontsize=9)
-    p_value_grid = np.zeros((len(labels), len(labels)))
-    for i, x_label in enumerate(order_list):
-        if not x_label.startswith('Control'):
-            continue
-        subset = df_bmi[df_bmi['BMI Bin'] == x_label]['pred'].dropna()
-        for j, x_label2 in enumerate(order_list):
-            if not x_label2.startswith('Antidep'):
-                continue
-            subset2 = df_bmi[df_bmi['BMI Bin'] == x_label2]['pred'].dropna()
-            ttest = ttest_ind(subset.values, subset2.values)
-            p_value_grid[i % len(labels), j % len(labels)] = ttest.pvalue
-    p_value_grid = pd.DataFrame(p_value_grid, index=labels, columns=labels).T
-    print(p_value_grid.max())
-    ax.set_ylabel('Model Score')
-    ax.set_xlabel('BMI Group')
+    # Get the positions of the boxes
+    box_positions = ax.get_xticks()
+    n_bins = len(labels)
+    
+    for i, label in enumerate(labels):
+        # Control box (left side of pair)
+        subset_control = df_bmi[(df_bmi['bmi_bin'] == label) & 
+                                (df_bmi['Group'] == 'Control')]['pred'].dropna()
+        if len(subset_control) > 0:
+            n = len(subset_control)
+            median_val = subset_control.median()
+            # Position is box_positions[i] - 0.2 (offset for paired boxes)
+            ax.text(box_positions[i] - 0.2, median_val + 0.01, f'N={n}', 
+                   ha='center', va='bottom', fontsize=9)
+        
+        # Antidepressant box (right side of pair)
+        subset_antidep = df_bmi[(df_bmi['bmi_bin'] == label) & 
+                               (df_bmi['Group'] == 'Antidepressant')]['pred'].dropna()
+        if len(subset_antidep) > 0:
+            n = len(subset_antidep)
+            median_val = subset_antidep.median()
+            # Position is box_positions[i] + 0.2 (offset for paired boxes)
+            ax.text(box_positions[i] + 0.2, median_val + 0.01, f'N={n}', 
+                   ha='center', va='bottom', fontsize=9)
+        
+        # Compute t-test between Control and Antidepressant for this bin
+        if len(subset_control) > 0 and len(subset_antidep) > 0:
+            ttest = ttest_ind(subset_control.values, subset_antidep.values)
+            print(f'T-test p value for {label} (Control vs Antidepressant): {ttest.pvalue:.4e}')
+            
+            # Draw significance bracket and stars
+            # Get max y-value from both boxes to position bracket above
+            max_y_control = subset_control.max() if len(subset_control) > 0 else 0
+            max_y_antidep = subset_antidep.max() if len(subset_antidep) > 0 else 0
+            max_y = max(max_y_control, max_y_antidep)
+            
+            # Position bracket slightly above the boxes
+            bracket_y = max_y + 0.05
+            sig_stars = get_significance_stars(ttest.pvalue)
+            
+            # Draw bracket
+            x1 = box_positions[i] - 0.2
+            x2 = box_positions[i] + 0.2
+            x_center = box_positions[i]
+            
+            # Draw horizontal line
+            ax.plot([x1, x2], [bracket_y, bracket_y], 'k-', linewidth=1)
+            # Draw vertical lines at ends
+            ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            # Add significance stars
+            ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=10)
+        
+        # Compute t-test against all positives/negatives
+        if len(subset_control) > 0:
+            ttest = ttest_ind(subset_control.values, df_bmi[df_bmi['Group'] == 'Antidepressant']['pred'].dropna().values)
+            print(f'T-test p value for Control {label} vs all positives: {ttest.pvalue:.4e}')
+        if len(subset_antidep) > 0:
+            ttest = ttest_ind(subset_antidep.values, df_bmi[df_bmi['Group'] == 'Control']['pred'].dropna().values)
+            print(f'T-test p value for Antidepressant {label} vs all negatives: {ttest.pvalue:.4e}')
+    
+    ax.set_ylabel('Model Score', fontsize=12)
+    ax.set_xlabel('BMI Bin', fontsize=12)
+    ax.set_ylim(0, 1.1)  # Increased to accommodate significance brackets
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
     plt.tight_layout()
     plt.savefig('fairness_analysis_bmi.png', dpi=300, bbox_inches='tight')
 
