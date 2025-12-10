@@ -202,6 +202,7 @@ def get_mage_stage(filename, gt=True, dataset=None, fold=0):
         if not len(stage) > mage.shape[1]:
             print('weird, stage is less than mage shape', len(stage), mage.shape[1])
             return None, None, None
+    bp() 
     stage = stage[:mage.shape[1]]
     if gt:
         return mage, mage_gt[:,:mage.shape[1]], stage
