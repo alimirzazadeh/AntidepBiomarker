@@ -313,7 +313,7 @@ for file in tqdm(all_antideps):
     # elif get_rem_supress(file, dataset=dataset):
     #     antidep_onset_nrem.append(get_post_onset_trend(mg, st, which_stage=[1,2,3]))
 
-bp() 
+
 # Process control files
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
@@ -361,11 +361,11 @@ control_pwr_rem = np.stack(control_pwr_rem)
 antidep_pwr_rem = np.stack(antidep_pwr_rem)
 control_pwr_sleep = np.stack(control_pwr_sleep)
 antidep_pwr_sleep = np.stack(antidep_pwr_sleep)
-antidep_onset_nrem = np.stack(antidep_onset_nrem)
-antidep_onset_nrem_nosupress = np.stack(antidep_onset_nrem_nosupress)
-control_onset_nrem = np.stack(control_onset_nrem)
-cre = np.stack(control_rem_entry)
-are = np.stack(antidep_rem_entry)
+# antidep_onset_nrem = np.stack(antidep_onset_nrem)
+# antidep_onset_nrem_nosupress = np.stack(antidep_onset_nrem_nosupress)
+# control_onset_nrem = np.stack(control_onset_nrem)
+# cre = np.stack(control_rem_entry)
+# are = np.stack(antidep_rem_entry)
 
 # Create main figure with REM onset and sleep onset analysis
 fig = plt.figure(figsize=(10, 8))
