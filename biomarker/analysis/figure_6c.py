@@ -312,6 +312,7 @@ for file in tqdm(all_antideps):
     elif get_rem_supress(file, dataset=dataset):
         antidep_onset_nrem.append(get_post_onset_trend(mg, st, which_stage=[1,2,3]))
 
+bp() 
 # Process control files
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
