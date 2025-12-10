@@ -20,34 +20,34 @@ df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground tr
 df = df.groupby('filename').agg('first').reset_index()
 print(df.shape)
 
-def get_post_onset_trend(mage, stage, which_stage=2):
-    if type(which_stage) is list:
-        is_n2 = np.zeros_like(stage).astype(bool)
-        for stg in which_stage:
-            is_n2 = is_n2 + (stage == stg)
-    else:    
-        is_n2 = (stage == which_stage)
+# def get_post_onset_trend(mage, stage, which_stage=2):
+#     if type(which_stage) is list:
+#         is_n2 = np.zeros_like(stage).astype(bool)
+#         for stg in which_stage:
+#             is_n2 = is_n2 + (stage == stg)
+#     else:    
+#         is_n2 = (stage == which_stage)
 
-    if len(stage) == 0 or 2 not in stage:
-        return None
-    onset_idx = np.argwhere(stage > 0)[0][0]
+#     if len(stage) == 0 or 2 not in stage:
+#         return None
+#     onset_idx = np.argwhere(stage > 0)[0][0]
 
-    if len(stage) > onset_idx + 6 * 60 * 2:
-        stage = stage[onset_idx:onset_idx + 6*60*2]
-        mage = mage[:, onset_idx:onset_idx + 6*60*2]
-        is_n2 = is_n2[onset_idx:onset_idx + 6*60*2]
-    else:
-        stage = stage[onset_idx:]
-        mage = mage[:, onset_idx:]
-        is_n2 = is_n2[onset_idx:]
+#     if len(stage) > onset_idx + 6 * 60 * 2:
+#         stage = stage[onset_idx:onset_idx + 6*60*2]
+#         mage = mage[:, onset_idx:onset_idx + 6*60*2]
+#         is_n2 = is_n2[onset_idx:onset_idx + 6*60*2]
+#     else:
+#         stage = stage[onset_idx:]
+#         mage = mage[:, onset_idx:]
+#         is_n2 = is_n2[onset_idx:]
             
-    output = np.zeros((256, 6 * 60 * 2))
-    output[:] = np.nan 
-    res = mage[:, :len(stage)]
-    is_n2 = is_n2[:len(stage)]
-    res[:, ~is_n2] = np.nan 
-    output[:, :len(stage)] = res
-    return output 
+#     output = np.zeros((256, 6 * 60 * 2))
+#     output[:] = np.nan 
+#     res = mage[:, :len(stage)]
+#     is_n2 = is_n2[:len(stage)]
+#     res[:, ~is_n2] = np.nan 
+#     output[:, :len(stage)] = res
+#     return output 
 
 def normalize_gt(eeg, dataset ):
     aligned_stats = {
@@ -227,8 +227,8 @@ def mean_percent_difference(observed, expected):
     return (mean_a - mean_b) / denom * 100
 
 def mean_percent_difference_2(observed, expected):
-    a = observed
-    b = expected
+    a = np.exp(observed)
+    b = np.exp(expected)
 
     mean_a = np.nanmean(a, 0)
     mean_b = np.nanmean(b, 0)
@@ -314,6 +314,8 @@ antidep_pwr_sleep_gt = []
 control_pwr_sleep_gt = [] 
 antidep_pwr_sleep_l1 = [] 
 control_pwr_sleep_l1 = [] 
+antidep_pwr_sleep_gt_norm = [] 
+control_pwr_sleep_gt_norm = [] 
 
 # Process antidepressant files
 
@@ -342,6 +344,7 @@ for file in tqdm(all_antideps):
         antidep_pwr_sleep.append(mage2_sleep)
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
         antidep_pwr_sleep_gt.append(mage2_sleep_gt)
+        antidep_pwr_sleep_gt_norm.append(mage2_sleep_gt_norm)
         antidep_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
 
 # Process control files
@@ -369,6 +372,7 @@ for file in tqdm(all_controls):
         control_pwr_sleep.append(mage2_sleep)
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
         control_pwr_sleep_gt.append(mage2_sleep_gt)
+        control_pwr_sleep_gt_norm.append(mage2_sleep_gt_norm)
         control_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
 # Convert to numpy arrays
 control_pwr_sleep = np.stack(control_pwr_sleep)
@@ -377,14 +381,24 @@ antidep_pwr_sleep_gt = np.stack(antidep_pwr_sleep_gt)
 control_pwr_sleep_gt = np.stack(control_pwr_sleep_gt)
 antidep_pwr_sleep_l1 = np.stack(antidep_pwr_sleep_l1)
 control_pwr_sleep_l1 = np.stack(control_pwr_sleep_l1)
+antidep_pwr_sleep_gt_norm = np.stack(antidep_pwr_sleep_gt_norm)
+control_pwr_sleep_gt_norm = np.stack(control_pwr_sleep_gt_norm)
 
 
 
 # Calculate percent differences with bootstrap
-
 if True:
-    whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep)
-    whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt)
+    whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
+    whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt, method='percent_diff')
+    print('Mean differnece in percent errors: ', np.mean(np.abs(whole_sleep2 - whole_sleep_gt2)))
+    l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]))
+    print('L1 error (individual level):', l1_error)
+    l1_error_cohort = np.mean(np.abs(np.mean(antidep_pwr_sleep_gt_norm,0) - np.mean(control_pwr_sleep_gt_norm,0)))
+    print('L1 error (cohort level):', np.mean(l1_error_cohort))
+bp() 
+if True:
+    whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
+    whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt, method='percent_diff')
     l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]), 0)
     fig, ax = plt.subplots(3,figsize=(16, 12))
     ax[0].plot(smooth(whole_sleep2, 3), label='Sleep', ls='dashed', color='black')
@@ -420,7 +434,7 @@ if True:
     ax[0].set_xlim(-0.01, 256.01)
     ax[1].set_xlim(-0.01, 256.01)
     ax[2].set_xlim(-0.01, 256.01)
-    plt.savefig(f'check_reconstruction_error_v5.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'check_reconstruction_error_v5_simplified.png', dpi=300, bbox_inches='tight')
     plt.close()
 bp() 
 print('done')
