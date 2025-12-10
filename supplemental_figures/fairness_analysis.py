@@ -6,7 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from scipy.stats import ttest_ind
-
+import dataframe_image as dfi
 def get_significance_stars(pval):
     if pval < 1e-10:
         return '***'
@@ -198,6 +198,8 @@ age_bins = sorted(list(age_results.keys()), key=lambda x: x.left)
 # Convert intervals to string labels for plotting
 age_labels = [f"{int(age_bin.left)}-{int(age_bin.right)}" for age_bin in age_bins]
 sns.barplot(x=age_labels, y=[age_results[age_bin][0] for age_bin in age_bins], ax=ax1, palette='Greens')
+sex_performance_table = pd.DataFrame(columns=['Sex', 'AUROC', 'N'])
+age_performance_table = pd.DataFrame(columns=['Age Range', 'AUROC', 'N'])
 for i, age_bin in enumerate(age_bins):
     # Calculate error bar length (distance from mean to CI bounds)
     mean_auroc = age_results[age_bin][0]
@@ -209,9 +211,9 @@ for i, age_bin in enumerate(age_bins):
     yerr_upper = upper_ci - mean_auroc
 
     ax1.errorbar(i, mean_auroc, yerr=[[yerr_lower], [yerr_upper]], fmt='none', ecolor='black', capsize=5)
-
     # Add n= on top of each bar
     n_samples = len(df_age[df_age["age_bin"] == age_bin])
+    age_performance_table.loc[i] = [f"{int(age_bin.left)}-{int(age_bin.right)}", f"{mean_auroc:.2f} ({lower_ci:.2f}-{upper_ci:.2f})", n_samples]
     # ax1.text(i, mean_auroc + 0.01, f'n={n_samples}', ha='center', va='bottom')
 ax1.set_ylim(0,1)
 ax1.set_yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
@@ -234,8 +236,15 @@ for i, gender in enumerate([1.0,2.0]):
 
     # Add n= on top of each bar
     n_samples = len(df_gender_bin)
+    sex_performance_table.loc[i] = [['','Male','Female'][int(gender)], f"{mean_auroc:.2f} ({lower_ci:.2f}-{upper_ci:.2f})", n_samples]
     # ax2.text(i, mean_auroc + 0.01, f'n={n_samples}', ha='center', va='bottom')
 
+## use dfi to save the tables 
+age_performance_table.set_index('Age Range', inplace=True)
+sex_performance_table.set_index('Sex', inplace=True)
+dfi.export(age_performance_table.T, 'age_performance_table.png')
+dfi.export(sex_performance_table.T, 'sex_performance_table.png')
+bp() 
 ## order the bmi bins by the bmi values 
 bmi_bins = sorted(list(bmi_results.keys()), key=lambda x: x.left)
 sns.barplot(x=bmi_bins, y=[bmi_results[bmi_bin][0] for bmi_bin in bmi_bins], ax=ax3, width=0.6, palette='Greens')

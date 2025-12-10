@@ -43,7 +43,8 @@ def load_and_preprocess_data():
     df['is_ntca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('N') or ',N' in x else 0)
     df['is_snri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NN') or ',NN' in x else 0)
     df['is_ssri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NS') or ',NS' in x else 0)
-    df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
+    # df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
+    df = df[(df['is_snri'] == 1) | (df['is_ssri'] == 1) | (df['is_ntca'] == 1) | (df['is_tca'] == 1) | (df['label'] == 0)]
     # Group by patient and taxonomy, taking mean of predictions
     # df = df.groupby(['pid', 'taxonomy'], as_index=False).agg(
     #     lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
@@ -106,7 +107,7 @@ for i, cohort in enumerate(order):
     print(f'{cohort}: Median={median:.2f}, IQR: [{q1:.2f}-{q3:.2f}]')
     n = subset.shape[0]
     ax.text(i, median + 0.01, f'N={n}', ha='center', va='bottom', fontsize=10)
-plt.savefig('cotherapy_analysis_snri_v2.png', dpi=300, bbox_inches='tight')
+plt.savefig('cotherapy_analysis_overall_v2.png', dpi=300, bbox_inches='tight')
 
 # antidep_plus_benzo, all_antidep, multi_therapy, 
 

@@ -378,31 +378,32 @@ ax11 = fig.add_subplot(gs[1, 1])
 ax = [[ax00, ax01], [ax10, ax11]]
 
 
-bp() 
+
 # Calculate percent differences with bootstrap
 whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep)
 whole_nrem2, whole_nrem_lower, whole_nrem_upper = bootstrap_percent_difference(antidep_pwr_nrem, control_pwr_nrem)
 whole_rem2, whole_rem_lower, whole_rem_upper = bootstrap_percent_difference(antidep_pwr_rem, control_pwr_rem)
 
 # Create power spectrum comparison figure
-fig, ax = plt.subplots(figsize=(10, 8))
-ax.plot(smooth(whole_nrem2, 3), label='NREM', ls='dashed', color='purple')
-ax.fill_between(np.arange(0, 256), smooth(whole_nrem_lower, 3), smooth(whole_nrem_upper, 3), alpha=0.1, color='purple')
-ax.plot(smooth(whole_rem2, 3), label='REM', ls='dashed', color='red')
-ax.fill_between(np.arange(0, 256), smooth(whole_rem_lower, 3), smooth(whole_rem_upper, 3), alpha=0.1, color='red')
+if False:
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.plot(smooth(whole_nrem2, 3), label='NREM', ls='dashed', color='purple')
+    ax.fill_between(np.arange(0, 256), smooth(whole_nrem_lower, 3), smooth(whole_nrem_upper, 3), alpha=0.1, color='purple')
+    ax.plot(smooth(whole_rem2, 3), label='REM', ls='dashed', color='red')
+    ax.fill_between(np.arange(0, 256), smooth(whole_rem_lower, 3), smooth(whole_rem_upper, 3), alpha=0.1, color='red')
 
-ax.axhline(y=0, color='gray', ls='dotted', alpha=0.3)
-for x in [1, 4, 8, 12, 16]:
-    ax.axvline(x * 8, color='gray', ls='dotted', alpha=0.3)
+    ax.axhline(y=0, color='gray', ls='dotted', alpha=0.3)
+    for x in [1, 4, 8, 12, 16]:
+        ax.axvline(x * 8, color='gray', ls='dotted', alpha=0.3)
 
-ax.set_xlim(-0.01, 256.01)
-ax.set_xticks(np.arange(0, 257, 32))
-ax.set_xticklabels(np.arange(0, 33, 4))
-ax.set_xlabel('Frequency (Hz)')
-ax.set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
-ax.legend()
-plt.savefig(f'figure_3a_{"control_matching" if CONTROL_MATCHING else "no_control_matching"}_v2.png', dpi=300, bbox_inches='tight')
-plt.close()
+    ax.set_xlim(-0.01, 256.01)
+    ax.set_xticks(np.arange(0, 257, 32))
+    ax.set_xticklabels(np.arange(0, 33, 4))
+    ax.set_xlabel('Frequency (Hz)')
+    ax.set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
+    ax.legend()
+    plt.savefig(f'figure_3a_{"control_matching" if CONTROL_MATCHING else "no_control_matching"}_v2.png', dpi=300, bbox_inches='tight')
+    plt.close()
 
 if True:
     fig, ax = plt.subplots(figsize=(18, 4))

@@ -30,7 +30,8 @@ df['is_tca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('T') or ',T' in 
 df['is_ntca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('N') or ',N' in x else 0)
 df['is_snri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NN') or ',NN' in x else 0)
 df['is_ssri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NS') or ',NS' in x else 0)
-df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
+# df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
+df = df[(df['is_snri'] == 1) | (df['is_ssri'] == 1) | (df['is_ntca'] == 1) | (df['is_tca'] == 1) | (df['label'] == 0)]
 # Convert logits to probabilities using sigmoid
 df['pred'] = 1 / (1 + np.exp(-df['pred']))
 df['pid'] = df.apply(
@@ -161,7 +162,7 @@ if len(moderate_antidep) > 0 and len(normal_control) > 0:
     print(f'Moderate OSA Antidepressant vs Normal Control t-statistic: {t_stat:.2f}, p-value: {p_value:.4e}')
 
 plt.tight_layout()
-plt.savefig('osa_analysis_snri_v2.png', dpi=300, bbox_inches='tight')
+plt.savefig('osa_analysis_overall_v2.png', dpi=300, bbox_inches='tight')
 
 
 

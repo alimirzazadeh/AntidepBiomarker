@@ -176,9 +176,9 @@ def get_mage_stage(filename, gt=True, dataset=None, fold=0):
     STAGE_PREFIX = f'/data/netmit/wifall/ADetect/data/{dataset}/stage/'
     MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/MAGE/{dataset}_new/mage/cv_{fold}/'
     if gt:
-        # gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
+        gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
         ## this gt path is older, but used for the paper:
-        gt_path =f'/data/netmit/sleep_lab/filtered/c4_m1_multitaper/DATASET/'
+        # gt_path =f'/data/netmit/sleep_lab/filtered/c4_m1_multitaper/DATASET/'
         gt_dir = gt_path.replace('DATASET',dataset)
         if not os.path.exists(gt_dir):
             gt_dir = gt_path.replace('DATASET',dataset+'_new')
@@ -365,7 +365,7 @@ control_pwr_sleep_gt = np.stack(control_pwr_sleep_gt)
 antidep_pwr_sleep_l1 = np.stack(antidep_pwr_sleep_l1)
 control_pwr_sleep_l1 = np.stack(control_pwr_sleep_l1)
 
-bp() 
+
 
 # Calculate percent differences with bootstrap
 
@@ -407,7 +407,7 @@ if True:
     ax[0].set_xlim(-0.01, 256.01)
     ax[1].set_xlim(-0.01, 256.01)
     ax[2].set_xlim(-0.01, 256.01)
-    plt.savefig(f'check_reconstruction_error_v4.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'check_reconstruction_error_v5.png', dpi=300, bbox_inches='tight')
     plt.close()
-
+bp() 
 print('done')
