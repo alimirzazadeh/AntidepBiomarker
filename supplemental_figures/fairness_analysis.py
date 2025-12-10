@@ -242,8 +242,9 @@ for i, gender in enumerate([1.0,2.0]):
 ## use dfi to save the tables 
 age_performance_table.set_index('Age Range', inplace=True)
 sex_performance_table.set_index('Sex', inplace=True)
-dfi.export(age_performance_table.T, 'age_performance_table.png')
-dfi.export(sex_performance_table.T, 'sex_performance_table.png')
+
+dfi.export(age_performance_table, 'age_performance_table.png')
+dfi.export(sex_performance_table, 'sex_performance_table.png')
 bp() 
 ## order the bmi bins by the bmi values 
 bmi_bins = sorted(list(bmi_results.keys()), key=lambda x: x.left)

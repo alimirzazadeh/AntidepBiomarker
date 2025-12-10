@@ -226,18 +226,31 @@ def mean_percent_difference(observed, expected):
     
     return (mean_a - mean_b) / denom * 100
 
-def bootstrap_percent_difference(observed, expected, n_bootstrap=1000, ci=95):
+def mean_percent_difference_2(observed, expected):
+    a = observed
+    b = expected
+
+    mean_a = np.nanmean(a, 0)
+    mean_b = np.nanmean(b, 0)
+    denom = np.abs(mean_b)
+    
+    return (mean_a - mean_b) / denom * 100
+
+def bootstrap_percent_difference(observed, expected, n_bootstrap=1000, ci=95, method='percent_diff'):
     n_time = observed.shape[1]
     bootstrapped_diffs = np.zeros((n_bootstrap, n_time))
-
+    if method == 'percent_diff':
+        func = mean_percent_difference
+    elif method == 'percent_diff_2':
+        func = mean_percent_difference_2
     for i in tqdm(range(n_bootstrap)):
         sample_obs = observed[np.random.choice(observed.shape[0], size=observed.shape[0], replace=True)]
         sample_exp = expected[np.random.choice(expected.shape[0], size=expected.shape[0], replace=True)]
-        bootstrapped_diffs[i] = mean_percent_difference(sample_obs, sample_exp)
+        bootstrapped_diffs[i] = func(sample_obs, sample_exp)
 
     lower = np.percentile(bootstrapped_diffs, (100 - ci) / 2, axis=0)
     upper = np.percentile(bootstrapped_diffs, 100 - (100 - ci) / 2, axis=0)
-    mean_diff = mean_percent_difference(observed, expected)
+    mean_diff = func(observed, expected)
     return mean_diff, lower, upper
 
 def naive_power_post_onset(mage, stage, minutes=60, mean=True, which_stage=[1,2,3]):
@@ -330,7 +343,7 @@ for file in tqdm(all_antideps):
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
         antidep_pwr_sleep_gt.append(mage2_sleep_gt)
         antidep_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
-bp() 
+
 # Process control files
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
