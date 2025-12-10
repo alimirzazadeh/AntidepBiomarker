@@ -176,7 +176,9 @@ def get_mage_stage(filename, gt=True, dataset=None, fold=0):
     STAGE_PREFIX = f'/data/netmit/wifall/ADetect/data/{dataset}/stage/'
     MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/MAGE/{dataset}_new/mage/cv_{fold}/'
     if gt:
-        gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
+        # gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
+        ## this gt path is older, but used for the paper:
+        gt_path =f'/data/netmit/sleep_lab/filtered/c4_m1_multitaper/DATASET/'
         gt_dir = gt_path.replace('DATASET',dataset)
         if not os.path.exists(gt_dir):
             gt_dir = gt_path.replace('DATASET',dataset+'_new')
