@@ -125,7 +125,7 @@ def get_mage_stage(filename, gt=True, dataset='stages'):
         if not len(stage) > mage.shape[1]:
             print('weird, stage is less than mage shape', len(stage), mage.shape[1])
             return None, None
-    bp() 
+
     stage = stage[:mage.shape[1]]
     
     return mage, stage
@@ -307,11 +307,11 @@ for file in tqdm(all_antideps):
     if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
         antidep_pwr_sleep.append(mage2_sleep)
     
-    if not get_rem_supress(file, dataset=dataset) and prerem_n2 is not None:
-        antidep_rem_entry.append(prerem_n2)
-        antidep_onset_nrem_nosupress.append(get_post_onset_trend(mg, st, which_stage=[1,2,3]))
-    elif get_rem_supress(file, dataset=dataset):
-        antidep_onset_nrem.append(get_post_onset_trend(mg, st, which_stage=[1,2,3]))
+    # if not get_rem_supress(file, dataset=dataset) and prerem_n2 is not None:
+    #     antidep_rem_entry.append(prerem_n2)
+    #     antidep_onset_nrem_nosupress.append(get_post_onset_trend(mg, st, which_stage=[1,2,3]))
+    # elif get_rem_supress(file, dataset=dataset):
+    #     antidep_onset_nrem.append(get_post_onset_trend(mg, st, which_stage=[1,2,3]))
 
 bp() 
 # Process control files
@@ -322,10 +322,10 @@ for file in tqdm(all_controls):
     if mg is None or st is None:
         continue
     
-    post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
-    if post_onset is None:
-        continue 
-    control_onset_nrem.append(post_onset)
+    # post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    # if post_onset is None:
+    #     continue 
+    # control_onset_nrem.append(post_onset)
     
     mage_nrem = naive_power_post_onset(mg, st, minutes=60, mean=True, which_stage=[1,2,3])
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])

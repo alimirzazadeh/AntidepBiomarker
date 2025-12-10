@@ -202,7 +202,7 @@ def get_mage_stage(filename, gt=True, dataset=None, fold=0):
         if not len(stage) > mage.shape[1]:
             print('weird, stage is less than mage shape', len(stage), mage.shape[1])
             return None, None, None
-    bp() 
+
     stage = stage[:mage.shape[1]]
     if gt:
         return mage, mage_gt[:,:mage.shape[1]], stage
@@ -315,10 +315,10 @@ for file in tqdm(all_antideps):
     if mg is None or st is None:
         continue
     
-    post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
-    post_onset2 = get_post_onset_trend(mg, st, which_stage=[1,2,3])
-    if post_onset is None or post_onset2 is None:
-        continue 
+    # post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
+    # post_onset2 = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    # if post_onset is None or post_onset2 is None:
+    #     continue 
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
@@ -343,10 +343,10 @@ for file in tqdm(all_controls):
     if mg is None or st is None:
         continue
     
-    post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
-    post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
-    if post_onset is None:
-        continue 
+    # post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    # post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
+    # if post_onset is None:
+    #     continue 
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4]) 
