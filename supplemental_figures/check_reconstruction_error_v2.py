@@ -327,6 +327,7 @@ for file in tqdm(all_antideps):
     if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
         antidep_pwr_sleep_gt.append(mage2_sleep_gt)
         antidep_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
+bp() 
 # Process control files
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
@@ -340,6 +341,7 @@ for file in tqdm(all_controls):
         continue
     
     post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
     if post_onset is None:
         continue 
     
