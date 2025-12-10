@@ -394,8 +394,10 @@ if True:
     print('STD of percent errors: ', np.std(np.abs(whole_sleep2 - whole_sleep_gt2)))
     l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]))
     print('L1 error (individual level):', l1_error)
-    l1_error_cohort = np.mean(np.abs(np.mean(antidep_pwr_sleep_gt_norm,0) - np.mean(control_pwr_sleep_gt_norm,0)))
-    print('L1 error (cohort level):', np.mean(l1_error_cohort))
+    l1_error_cohort_antidep = np.mean(np.abs(np.mean(antidep_pwr_sleep_gt_norm,0) - np.mean(control_pwr_sleep,0)))
+    l1_error_cohort_control = np.mean(np.abs(np.mean(antidep_pwr_sleep,0) - np.mean(control_pwr_sleep_gt_norm,0)))
+    print('L1 error (cohort level antidep):', l1_error_cohort_antidep)
+    print('L1 error (cohort level control):', l1_error_cohort_control)
 bp() 
 if True:
     whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
