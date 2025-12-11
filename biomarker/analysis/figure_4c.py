@@ -146,7 +146,8 @@ def main():
     df_per_patient = df.groupby(['pid', DOSAGE_COL, 'taxonomy']).agg({
         'pred': 'median'
     }).reset_index()
-    
+    from ipdb import set_trace as bp
+    bp() 
     # Add dosage bins to per-patient data
     df_per_patient = create_dosage_bins(df_per_patient)
     

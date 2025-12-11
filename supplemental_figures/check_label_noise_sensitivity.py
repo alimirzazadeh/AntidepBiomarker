@@ -61,7 +61,7 @@ def flip_label(label, prop_flip=0.1, only_if_label_is_0=False):
         return 1 - label
     return label
 
-def load_and_prepare_data():
+def load_and_prepare_data(labels):
     """
     Load and prepare all datasets for analysis.
     
@@ -70,19 +70,18 @@ def load_and_prepare_data():
     tuple : (df, df_eeg, labels_model_baseline, model1_cols, model2_cols)
     """
     # Load datasets
-    df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
-    df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
-    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
+    # df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
+    # df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
     df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
     
     # Prepare sleep stage features dataset
-    df = df.drop(columns=['dataset'])
-    model1_cols = [col for col in df.columns if col not in ['filename', 'fold', 'dataset', 'label']]
+    # df = df.drop(columns=['dataset'])
+    # model1_cols = [col for col in df.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
-    # Prepare EEG features dataset
-    df_eeg = df_eeg.merge(df, on='filename', how='inner')
-    df_eeg = df_eeg.drop(columns=['dataset'])
-    model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
+    # # Prepare EEG features dataset
+    # df_eeg = df_eeg.merge(df, on='filename', how='inner')
+    # df_eeg = df_eeg.drop(columns=['dataset'])
+    # model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
     # Process our model predictions
     labels['filename'] = labels['filename'].apply(lambda x: x.split('/')[-1])
@@ -109,11 +108,11 @@ def load_and_prepare_data():
     
     
     # Merge labels with feature datasets
-    labels_subset = labels[['filename', 'label', 'fold', 'dataset', 'mit_gender', 'mit_age']]
-    df = df.merge(labels_subset, on='filename', how='inner')
-    df_eeg = df_eeg.merge(labels_subset, on='filename', how='inner')
+    # labels_subset = labels[['filename', 'label', 'fold', 'dataset', 'mit_gender', 'mit_age']]
+    # df = df.merge(labels_subset, on='filename', how='inner')
+    # df_eeg = df_eeg.merge(labels_subset, on='filename', how='inner')
     
-    return df, df_eeg, labels_model_baseline, model1_cols, model2_cols
+    return labels_model_baseline #df, df_eeg, labels_model_baseline, model1_cols, model2_cols
 
 
 def bootstrap_auroc_ci(y_true, y_prob, n_bootstrap=1000, ci=0.95, random_state=42):
@@ -219,9 +218,13 @@ def main():
     # check_single_sample_auroc()
     # bp() 
     results = []
-    df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data()
+    # df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data()
+    df_0 = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv')))
+    df_05noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise05.csv')))
+    df_10noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv')))
     
-    for label_noise in [0.0, 0.01, 0.05, 0.1, 0.2]:
+    for i, labels_model_baseline in enumerate([df_0, df_05noise, df_10noise]):
+        label_noise = [0, 0.05, 0.1][i]
         label_noise_pre = label_noise
         ## represents percentage of positive class, first calcualte the proportion of positives to negatives 
         prop_positive = labels_model_baseline['label'].mean()
@@ -242,9 +245,18 @@ def main():
         lambda row: f"{row['auroc']:.3f} [{row['lower']:.3f} - {row['upper']:.3f}]", 
         axis=1
     )
-    pivot_table = df.pivot(index='label_noise', columns='Dataset', values='formatted')
-    pivot_table.index.name = 'Label Noise %'
-    dfi.export(pivot_table, 'label_noise_sensitivity.png')
+    dfp = df.pivot(index='label_noise', columns='Dataset', values='auroc')
+    df2p = dfp.copy()
+    
+    og_auroc = dfp.iloc[0]
+
+    bp() 
+    for col in dfp.columns:
+        df2p[col] = dfp[col] - og_auroc[col]
+
+    df2p.iloc[0] = dfp.iloc[0]
+    df2p.index.name = 'Label Noise %'
+    dfi.export(df2p, 'label_noise_sensitivity_v2.png')
     print('done')
     
 if __name__ == "__main__":
