@@ -41,7 +41,7 @@ from scipy.__config__ import show
 from ipdb import set_trace as bp
 import scipy 
 # Configuration
-EXP_FOLDER = '../../data/'
+EXP_FOLDER = 'data/'
 
 
 def calculate_pval_effect_size(x,y,equal_var=False):
@@ -103,7 +103,7 @@ def add_taxonomy_data(df):
     df = pd.merge(df, df_taxonomy, on='filename', how='inner')
     return df
 
-def process_mros_medications(EXP_FOLDER = '../../data/'):
+def process_mros_medications(EXP_FOLDER = 'data/'):
     """Process MROS medication data and create medication flags."""
     # Load MROS medication data
     df_mros_meds = pd.read_csv(os.path.join(EXP_FOLDER,'mros2-dataset-augmented-live.csv'))
@@ -130,7 +130,7 @@ def process_mros_medications(EXP_FOLDER = '../../data/'):
     
     return df_mros_meds[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics']]
 
-def process_wsc_medications(EXP_FOLDER = '../../data/'):
+def process_wsc_medications(EXP_FOLDER = 'data/'):
     """Process WSC medication data and create medication flags."""
     df_wsc_meds = pd.read_csv(os.path.join(EXP_FOLDER,'wsc-dataset-0.7.0.csv'))
     
@@ -193,7 +193,7 @@ def extract_medication_groups(df):
     
     return groups
 
-def create_visualization(groups, save_path):
+def create_visualization(groups, save_path=None, ax=None, save=True):
     """Create and save the medication comparison visualization."""
     # Print group sizes
     print('Group sizes:')
@@ -218,7 +218,8 @@ def create_visualization(groups, save_path):
     })
     
     # Create figure
-    fig, ax = plt.subplots(figsize=(7, 4))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7, 4))
     
     # Define order for consistent presentation
     order = ['No Psycho\ntropic', 'Anti-\ncholinergics', 'Hypnotics', 'Anti-\nconvulsants', 'Benzo-\ndiazepines',
@@ -232,27 +233,51 @@ def create_visualization(groups, save_path):
     
     
 
-    ### Add significances 
-    for i, medication in enumerate(order[:-1]):
+    ### Add significances - compare each medication to Antidepressants
+    # Get Antidepressants values (last column)
+    antidep_values = df_viz[df_viz['medication'] == 'Anti-\ndepressants']['pred'].values
+    box_positions = ax.get_xticks()
+    
+    # Find the index of Antidepressants in the order
+    antidep_idx = order.index('Anti-\ndepressants')
+    
+    # Compare each medication (except Antidepressants) to Antidepressants
+    bracket_offset = 0  # Track vertical offset for each bracket to avoid overlap
+    for i, medication in enumerate(order):
+        if medication == 'Anti-\ndepressants':
+            continue  # Skip Antidepressants itself
+        
         medication_values = df_viz[df_viz['medication'] == medication]['pred'].values
-        antidep_values = df_viz[df_viz['medication'] == 'Anti-\ndepressants']['pred'].values
-        pval_pred, effect_size_pred = calculate_pval_effect_size(antidep_values, medication_values)
-
         
-        # Get current y limits for positioning
-        y_min, y_max = ax.get_ylim()
-        y_pos = y_max - (y_max - y_min) * 0.15  # Position above the boxes
-        
-        # Add annotations for GT comparison (between positions 0 and 1)
-        stars_gt = get_significance_stars(pval_pred)
-        crosses_gt = get_effect_size_crosses(effect_size_pred)
-        annotation_gt = stars_gt + '\n' + crosses_gt if stars_gt or crosses_gt else ''
-        if annotation_gt:
-            # Position between GT Control (0) and GT Antidep (1)
-            ax.text(i, y_pos, annotation_gt, 
-                      ha='center', va='bottom', fontsize=10, color='black')
-    
-    
+        if len(medication_values) > 0 and len(antidep_values) > 0:
+            # Calculate p-value and effect size
+            pval, effect_size = calculate_pval_effect_size(medication_values, antidep_values)
+            sig_stars = get_significance_stars(pval)
+            crosses = get_effect_size_crosses(effect_size)
+            
+            # Get max y-value from both boxes to position bracket above
+            max_y_antidep = antidep_values.max() if len(antidep_values) > 0 else 0
+            max_y_medication = medication_values.max() if len(medication_values) > 0 else 0
+            max_y = max(max_y_antidep, max_y_medication)
+            
+            # Position bracket slightly above the boxes with vertical spacing to avoid overlap
+            bracket_y = max_y + 0.05 + (bracket_offset * 0.02)  # 0.02 spacing between brackets
+            bracket_offset -= 1
+            
+            # Draw bracket between Antidepressants position and current medication position
+            x1 = box_positions[antidep_idx]  # Antidepressants position
+            x2 = box_positions[i]  # Medication position
+            x_center = (x1 + x2) / 2
+            
+            # Draw horizontal line
+            ax.plot([x1, x2], [bracket_y, bracket_y], 'k-', linewidth=1)
+            # Draw vertical lines at ends
+            ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            # Add significance stars
+            ax.text(x2, bracket_y - 0.01, sig_stars, ha='center', va='bottom', fontsize=10)
+            # Add effect size crosses right above the stars
+            ax.text(x2, bracket_y - 0.01 + 0.05, crosses, ha='center', va='bottom', fontsize=10)
     
     
     
@@ -265,15 +290,16 @@ def create_visualization(groups, save_path):
                 size='medium', color='black')
     
     # Customize plot
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0, 1.1)
+    ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
     ax.set_ylabel('Model Score')
     ax.set_xlabel('Medication Type')
-    plt.tight_layout()
-    
-    # Save figure
-    fig.savefig(save_path, dpi=300, bbox_inches='tight')
+    if save:
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    return ax
 
-def main():
+def generate_other_medications_figure(save=True, ax=None):
     """Main analysis pipeline."""
     print("Loading and preprocessing data...")
     df = load_and_preprocess_data()
@@ -293,10 +319,13 @@ def main():
     groups = extract_medication_groups(df)
     
     print("Creating visualization...")
-    save_path = 'figure_4d.png'
-    create_visualization(groups, save_path)
-    
+    save_path = 'biomarker/analysis/figure_4d.png'
+    if save:
+        create_visualization(groups, save_path=save_path, save=True)
+    else:
+        create_visualization(groups, save_path=None, ax=ax, save=False)
+
     print("Analysis completed successfully!")
 
 if __name__ == "__main__":
-    main()
+    generate_other_medications_figure(save=True)
