@@ -42,7 +42,7 @@ from ipdb import set_trace as bp
 import scipy 
 # Configuration
 EXP_FOLDER = 'data/'
-
+font_size = 12
 
 def calculate_pval_effect_size(x,y,equal_var=False):
     t,p=scipy.stats.ttest_ind(x,y,equal_var=equal_var)
@@ -79,7 +79,8 @@ def load_and_preprocess_data():
     """Load and preprocess the main inference data."""
     # Load main inference data
     df = pd.read_csv(os.path.join(EXP_FOLDER, 'inference_v6emb_3920_all.csv'))
-    
+    # Filter to only include MROS and WSC datasets
+    df = df[df['dataset'].isin(['mros', 'wsc','rf'])].copy() 
     # Apply sigmoid transformation to predictions
     df['pred'] = 1 / (1 + np.exp(-df['pred'])) 
     
@@ -91,10 +92,73 @@ def load_and_preprocess_data():
     # Aggregate by filename (take mean for numeric, first value for non-numeric)
     df = df.groupby('filename').agg(lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0])
     
-    # Filter to only include MROS and WSC datasets
-    df = df[~((df['dataset'] != 'mros') * (df['dataset'] != 'wsc'))].copy()
-    
+
     return df
+
+def process_mit_medications(EXP_FOLDER = 'data/'):
+    """Add taxonomy information to the dataframe."""
+    df_taxonomy = pd.read_csv(os.path.join(EXP_FOLDER,'master_dataset.csv'))
+    df_taxonomy = df_taxonomy[df_taxonomy['dataset'] == 'rf'].copy()
+    df_taxonomy = df_taxonomy[['filename', 'taxonomy','date','pid']]
+
+    df_taxonomy['date'] = pd.to_datetime(df_taxonomy['date'])
+    df_rf = pd.read_csv(os.path.join(EXP_FOLDER, 'mit_psychotropics.csv'))
+    df_rf.rename(columns={'Unnamed: 0': 'pid'}, inplace=True)
+    def get_benzos(pid, date):
+        if pid in ['NIHYA889LELYV','NIHFW795KLATW']:
+            return True if (pid == 'NIHYA889LELYV' and date < pd.to_datetime('2019-09-15')) or (pid == 'NIHFW795KLATW' and date > pd.to_datetime('2021-01-01')) else False
+        else:
+            if  pid not in df_rf['pid'].values:
+                return False
+            else:
+                return df_rf[df_rf['pid'] == pid]['Benzodiazepines'].item()
+    def get_antipsycho(pid, date):
+        # print(type(pid), type(df_rf['pid'].values))
+        if  pid not in df_rf['pid'].values:
+                return False
+        else:
+                return df_rf[df_rf['pid'] == pid]['Antipsychotics'].item()
+    def get_anticonvuls(pid, date):
+        if pid in ['NIHKH638RXUVN']:
+            return True if (pid == 'NIHKH638RXUVN' and date < pd.to_datetime('2021-03-20')) and (date > pd.to_datetime('2021-02-20')) else False
+        else:
+            if  pid not in df_rf['pid'].values:
+                return False
+            else:
+                return df_rf[df_rf['pid'] == pid]['Anticonvulsants'].item()
+    def get_hypnotics(pid, date):
+            if  pid not in df_rf['pid'].values:
+                return False
+            else:
+                return df_rf[df_rf['pid'] == pid]['Hypnotics'].item()
+    def get_anticholinergics(pid, date):
+        if pid in ['NIHPX213JXJZC','NIHYA889LELYV']:
+            return True if (pid == 'NIHPX213JXJZC' and date > pd.to_datetime('2020-07-14')) or (pid == 'NIHYA889LELYV' and date < pd.to_datetime('2020-10-01')) else False
+        else:
+            if  pid not in df_rf['pid'].values:
+                return False
+            else:
+                return df_rf[df_rf['pid'] == pid]['Anticholinergics'].item()
+    def get_stimulants(pid, date):
+        if  pid not in df_rf['pid'].values:
+                return False
+        else:
+                return df_rf[df_rf['pid'] == pid]['Stimulants'].item()
+    df_taxonomy['pid'] = df_taxonomy['pid'].astype(str)
+    df_taxonomy['benzos'] = df_taxonomy.apply(lambda x: get_benzos(x['pid'],x['date']), axis=1)
+    df_taxonomy['antipsycho'] = df_taxonomy.apply(lambda x: get_antipsycho(x['pid'],x['date']), axis=1)
+    df_taxonomy['convuls'] = df_taxonomy.apply(lambda x: get_anticonvuls(x['pid'],x['date']), axis=1)
+    df_taxonomy['hypnotics'] = df_taxonomy.apply(lambda x: get_hypnotics(x['pid'],x['date']), axis=1)
+    df_taxonomy['anticholinergics'] = df_taxonomy.apply(lambda x: get_anticholinergics(x['pid'],x['date']), axis=1)
+    df_taxonomy['stimulants'] = df_taxonomy.apply(lambda x: get_stimulants(x['pid'],x['date']), axis=1)
+    print('Stimulants: ', df_taxonomy[df_taxonomy['stimulants'] == True]['pid'].unique())
+    print('Anticholinergics: ', df_taxonomy[df_taxonomy['anticholinergics'] == True]['pid'].unique())
+    print('Hypnotics: ', df_taxonomy[df_taxonomy['hypnotics'] == True]['pid'].unique())
+    print('Convuls: ', df_taxonomy[df_taxonomy['convuls'] == True]['pid'].unique())
+    print('Antipsycho: ', df_taxonomy[df_taxonomy['antipsycho'] == True]['pid'].unique())
+    print('Benzos: ', df_taxonomy[df_taxonomy['benzos'] == True]['pid'].unique())
+    return df_taxonomy[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants']]
+    
 
 def add_taxonomy_data(df):
     """Add taxonomy information to the dataframe."""
@@ -122,13 +186,13 @@ def process_mros_medications(EXP_FOLDER = 'data/'):
     
     # Create binary flags for each medication category
     for category, medications in medication_categories.items():
-        if category != 'stimulants':  # Skip stimulants as they're not used in the final analysis
+        if True: #category != 'stimulants':  # Skip stimulants as they're not used in the final analysis
             df_mros_meds[category.replace('convuls', 'convuls')] = df_mros_meds.apply(
                 lambda x: any([x[med] == True for med in medications if med in df_mros_meds.columns]), 
                 axis=1
             )
     
-    return df_mros_meds[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics']]
+    return df_mros_meds[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics','stimulants']]
 
 def process_wsc_medications(EXP_FOLDER = 'data/'):
     """Process WSC medication data and create medication flags."""
@@ -152,13 +216,13 @@ def process_wsc_medications(EXP_FOLDER = 'data/'):
     
     # Create binary flags for each medication category
     for category, medications in medication_categories.items():
-        if category != 'stimulants':  # Skip stimulants as they're not used in the final analysis
-            df_wsc_meds[category.replace('convuls', 'convuls')] = df_wsc_meds.apply(
-                lambda x: any([x[med] == True for med in medications if med in df_wsc_meds.columns]), 
-                axis=1
-            )
+        # if category != 'stimulants':  # Skip stimulants as they're not used in the final analysis
+        df_wsc_meds[category.replace('convuls', 'convuls')] = df_wsc_meds.apply(
+            lambda x: any([x[med] == True for med in medications if med in df_wsc_meds.columns]), 
+            axis=1
+        )
     
-    return df_wsc_meds[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics']]
+    return df_wsc_meds[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants']]
 
 def extract_medication_groups(df):
     """Extract prediction values for different medication groups."""
@@ -182,14 +246,16 @@ def extract_medication_groups(df):
     groups['hypnotics'] = df[(df['label'] == 0) & (df['hypnotics'] == True)]['pred'].values
     groups['anticholinergics'] = df[(df['label'] == 0) & (df['anticholinergics'] == True)]['pred'].values
     # Antidepressant users without other medications
-    groups['antidep'] = df[
-        (df['label'] == 1) & 
-        (df['benzos'] == False) & 
-        (df['antipsycho'] == False) & 
-        (df['convuls'] == False) & 
-        (df['hypnotics'] == False) & 
-        (df['anticholinergics'] == False)
-    ]['pred'].values
+    # groups['antidep'] = df[
+    #     (df['label'] == 1) & 
+    #     (df['benzos'] == False) & 
+    #     (df['antipsycho'] == False) & 
+    #     (df['convuls'] == False) & 
+    #     (df['hypnotics'] == False) & 
+    #     (df['anticholinergics'] == False)
+    # ]['pred'].values
+    # All Antidepressant users 
+    groups['antidep'] = df[(df['label'] == 1)]['pred'].values
     
     return groups
 
@@ -230,6 +296,8 @@ def create_visualization(groups, save_path=None, ax=None, save=True):
         x="medication", y="pred", data=df_viz, 
         palette='Greens', ax=ax, order=order, showfliers=False
     )
+    ax.tick_params(axis='x', labelsize=font_size-1)
+    ax.tick_params(axis='y', labelsize=font_size)
     
     
 
@@ -258,7 +326,7 @@ def create_visualization(groups, save_path=None, ax=None, save=True):
             # Get max y-value from both boxes to position bracket above
             max_y_antidep = antidep_values.max() if len(antidep_values) > 0 else 0
             max_y_medication = medication_values.max() if len(medication_values) > 0 else 0
-            max_y = max(max_y_antidep, max_y_medication)
+            max_y = max(max_y_antidep, max_y_medication) + 0.08
             
             # Position bracket slightly above the boxes with vertical spacing to avoid overlap
             bracket_y = max_y + 0.05 + (bracket_offset * 0.02)  # 0.02 spacing between brackets
@@ -275,9 +343,9 @@ def create_visualization(groups, save_path=None, ax=None, save=True):
             ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
             ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
             # Add significance stars
-            ax.text(x2, bracket_y - 0.01, sig_stars, ha='center', va='bottom', fontsize=10)
+            ax.text(x2, bracket_y - 0.01 - 0.06, sig_stars, ha='center', va='bottom', fontsize=font_size)
             # Add effect size crosses right above the stars
-            ax.text(x2, bracket_y - 0.01 + 0.05, crosses, ha='center', va='bottom', fontsize=10)
+            # ax.text(x2, bracket_y - 0.01 - 0.05 -  0.06, crosses, ha='center', va='bottom', fontsize=font_size)
     
     
     
@@ -285,15 +353,16 @@ def create_visualization(groups, save_path=None, ax=None, save=True):
     # Add sample size annotations
     for i, medication in enumerate(order):
         n = df_viz[df_viz['medication'] == medication].shape[0]
-        ypos = np.percentile(df_viz[df_viz['medication'] == medication]['pred'], 88) + 0.03
+        # ypos = np.percentile(df_viz[df_viz['medication'] == medication]['pred'], 88) + 0.03
+        ypos = df_viz[df_viz['medication'] == medication]['pred'].median() + 0.01
         ax.text(i, ypos, f'N={n}', horizontalalignment='center', 
-                size='medium', color='black')
+                size=font_size, color='black')
     
     # Customize plot
     ax.set_ylim(0, 1.1)
     ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
-    ax.set_ylabel('Model Score')
-    ax.set_xlabel('Medication Type')
+    ax.set_ylabel('Model Score', fontsize=font_size)
+    ax.set_xlabel('Medication Type', fontsize=font_size)
     if save:
         plt.tight_layout()
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -311,9 +380,20 @@ def generate_other_medications_figure(save=True, ax=None):
     df_mros_meds = process_mros_medications()
     df_wsc_meds = process_wsc_medications()
     
+    print("Processing MIT medication data...")
+    df_mit_meds = process_mit_medications()
+    
     # Combine medication data
-    df_other = pd.concat([df_mros_meds, df_wsc_meds])
+    df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
+
     df = df.merge(df_other, on='filename', how='inner')
+    df = df[['filename', 'taxonomy', 'pred', 'pid', 'label', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']].copy()
+    
+    df = df.groupby(['pid', 'taxonomy', 'label','benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']).agg({'pred': 'mean'}).reset_index()
+    print(df[df['dataset'] == 'mros'].shape[0])
+    print(df[df['dataset'] == 'wsc'].shape[0])
+    print(df[df['dataset'] == 'rf'].shape[0])
+    print('Total merged data: ', df.shape[0])
     
     print("Extracting medication groups...")
     groups = extract_medication_groups(df)

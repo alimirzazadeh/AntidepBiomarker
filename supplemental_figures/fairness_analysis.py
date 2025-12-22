@@ -8,7 +8,7 @@ from tqdm import tqdm
 from scipy.stats import ttest_ind
 import dataframe_image as dfi
 import os 
-
+font_size = 13
 def get_significance_stars(pval):
     if pval < 1e-10:
         return '***'
@@ -148,6 +148,7 @@ def generate_fairness_analysis_figure(save=True, ax=None, age_sex=False, bmi=Tru
     df['age_bin'] = pd.cut(df['mit_age'], bins=range(0, 100, 10), right=False)
     bmi_bins = [0, 18.5, 25, 30, 35, 40, 100]
     df['bmi_bin'] = pd.cut(df['mit_bmi'], bins=bmi_bins, right=False)
+    
     ## Calculat the AUROC for each age bin 
     age_results = {}
     gender_results = {}
@@ -292,6 +293,7 @@ def generate_fairness_analysis_figure(save=True, ax=None, age_sex=False, bmi=Tru
 
     elif bmi:
         ## repeat zung_bins 
+        print('Unique Datasets used in BMI Analysis: ', df_bmi['dataset'].unique())
         bmi_bins = df_bmi['bmi_bin'].unique()
         bins = [0, 18.5, 25, 30, 35, 40, 100]
         labels = ['<18.5', '18.5-25', '25-30', '30-35', '35-40', '>40']
@@ -322,7 +324,7 @@ def generate_fairness_analysis_figure(save=True, ax=None, age_sex=False, bmi=Tru
                 median_val = subset_control.median()
                 # Position is box_positions[i] - 0.2 (offset for paired boxes)
                 ax.text(box_positions[i] - 0.2, median_val + 0.01, f'N={n}', 
-                    ha='center', va='bottom', fontsize=9)
+                    ha='center', va='bottom', fontsize=font_size)
             
             # Antidepressant box (right side of pair)
             subset_antidep = df_bmi[(df_bmi['bmi_bin'] == label) & 
@@ -332,7 +334,7 @@ def generate_fairness_analysis_figure(save=True, ax=None, age_sex=False, bmi=Tru
                 median_val = subset_antidep.median()
                 # Position is box_positions[i] + 0.2 (offset for paired boxes)
                 ax.text(box_positions[i] + 0.2, median_val + 0.01, f'N={n}', 
-                    ha='center', va='bottom', fontsize=9)
+                    ha='center', va='bottom', fontsize=font_size)
             
             # Compute t-test between Control and Antidepressant for this bin
             if len(subset_control) > 0 and len(subset_antidep) > 0:
@@ -360,7 +362,7 @@ def generate_fairness_analysis_figure(save=True, ax=None, age_sex=False, bmi=Tru
                 ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
                 ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
                 # Add significance stars
-                ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=10)
+                ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=font_size)
             
             # Compute t-test against all positives/negatives
             if len(subset_control) > 0:
@@ -370,10 +372,12 @@ def generate_fairness_analysis_figure(save=True, ax=None, age_sex=False, bmi=Tru
                 ttest = ttest_ind(subset_antidep.values, df_bmi[df_bmi['Group'] == 'Control']['pred'].dropna().values)
                 print(f'T-test p value for Antidepressant {label} vs all negatives: {ttest.pvalue:.4e}')
         
-        ax.set_ylabel('Model Score', fontsize=12)
-        ax.set_xlabel('BMI', fontsize=12)
+        ax.set_ylabel('Model Score', fontsize=font_size)
+        ax.set_xlabel('BMI', fontsize=font_size)
         ax.set_ylim(0, 1.1)  # Increased to accommodate significance brackets
         ax.grid(axis='y', alpha=0.3, linestyle='--')
+        ax.tick_params(axis='x', labelsize=font_size)
+        ax.tick_params(axis='y', labelsize=font_size)
         if save:
             plt.tight_layout()
             plt.savefig('fairness_analysis_bmi.png', dpi=300, bbox_inches='tight')

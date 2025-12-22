@@ -12,7 +12,7 @@ from scipy.stats import ttest_ind
 from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 import scipy
-
+font_size = 13
 def get_significance_stars(pval):
     if pval < 1e-10:
         return '***'
@@ -151,6 +151,8 @@ def generate_mdd_confound_figure(save=True, ax=None):
     sns.boxplot(data=df_combined, x='zung_index_bin', y='pred', hue='group', 
                 order=labels, palette='Greens', ax=ax, showfliers=False, 
                 )
+    ax.tick_params(axis='x', labelsize=font_size)
+    ax.tick_params(axis='y', labelsize=font_size)
     # Remove legend
     ax.legend_.remove()
     
@@ -168,7 +170,7 @@ def generate_mdd_confound_figure(save=True, ax=None):
             median_val = subset_control.median()
             # Position is box_positions[i] - 0.2 (offset for paired boxes)
             ax.text(box_positions[i] - 0.2, median_val + 0.01, f'N={n}', 
-                   ha='center', va='bottom', fontsize=9)
+                   ha='center', va='bottom', fontsize=font_size)
         
         # Antidepressant box (right side of pair)
         subset_antidep = df_combined[(df_combined['zung_index_bin'] == label) & 
@@ -178,7 +180,7 @@ def generate_mdd_confound_figure(save=True, ax=None):
             median_val = subset_antidep.median()
             # Position is box_positions[i] + 0.2 (offset for paired boxes)
             ax.text(box_positions[i] + 0.2, median_val + 0.01, f'N={n}', 
-                   ha='center', va='bottom', fontsize=9)
+                   ha='center', va='bottom', fontsize=font_size)
         
         # Compute t-test between Control and Antidepressant for this bin
         if len(subset_control) > 0 and len(subset_antidep) > 0:
@@ -206,7 +208,7 @@ def generate_mdd_confound_figure(save=True, ax=None):
             ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
             ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
             # Add significance stars
-            ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=10)
+            ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=font_size)
         
         # Compute t-test against all positives/negatives
         if len(subset_control) > 0:
@@ -230,8 +232,8 @@ def generate_mdd_confound_figure(save=True, ax=None):
     #         fontsize=11, transform=ax.transAxes, verticalalignment='top', horizontalalignment='right',
     #         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
-    ax.set_xlabel('Depression Severity (Zung Index)', fontsize=12)
-    ax.set_ylabel('Model Score', fontsize=12)
+    ax.set_xlabel('Depression Severity (Zung Index)', fontsize=font_size)
+    ax.set_ylabel('Model Score', fontsize=font_size)
     ax.set_ylim(0, 1.1)  # Increased to accommodate significance brackets
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     if save:

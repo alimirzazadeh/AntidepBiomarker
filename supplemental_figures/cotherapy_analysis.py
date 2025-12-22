@@ -4,12 +4,14 @@ import numpy as np
 from ipdb import set_trace as bp
 import sys 
 sys.path.append('./')
-from biomarker.analysis.figure_4d import process_mros_medications, process_wsc_medications
+from biomarker.analysis.figure_4d import process_mros_medications, process_wsc_medications, process_mit_medications
 CSV_DIR = 'data/'
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import ttest_ind
 
+SUBTYPE = False
+font_size = 12
 def get_significance_stars(pval):
     if pval < 1e-10:
         return '***'
@@ -31,6 +33,7 @@ def load_and_preprocess_data():
     """
     # Load inference results
     df = pd.read_csv(INFERENCE_FILE)
+    df = df[df['dataset'].isin(['mros', 'wsc','rf'])].copy() 
     
     # Group by filename and aggregate (mean for numeric, first for non-numeric)
     df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
@@ -50,13 +53,15 @@ def load_and_preprocess_data():
     # Load and merge taxonomy data
     df_taxonomy = pd.read_csv(TAXONOMY_FILE)
     df = pd.merge(df, df_taxonomy, on='filename', how='inner')
-    df['is_tca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('T') or ',T' in x else 0)
-    df['is_ntca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('N') or ',N' in x else 0)
-    df['is_snri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NN') or ',NN' in x else 0)
-    df['is_ssri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NS') or ',NS' in x else 0)
-    # df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
-    df = df[(df['is_snri'] == 1) | (df['is_ssri'] == 1) | (df['is_ntca'] == 1) | (df['is_tca'] == 1) | (df['label'] == 0)]
+    if SUBTYPE: 
+        df['is_tca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('T') or ',T' in x else 0)
+        df['is_ntca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('N') or ',N' in x else 0)
+        df['is_snri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NN') or ',NN' in x else 0)
+        df['is_ssri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NS') or ',NS' in x else 0)
+        # df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
+        df = df[(df['is_snri'] == 1) | (df['is_ssri'] == 1) | (df['is_ntca'] == 1) | (df['is_tca'] == 1) | (df['label'] == 0)]
     # Group by patient and taxonomy, taking mean of predictions
+    # bp() 
     # df = df.groupby(['pid', 'taxonomy'], as_index=False).agg(
     #     lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
     # )
@@ -69,47 +74,55 @@ def generate_cotherapy_analysis_figure(save=True, ax=None):
         fig, ax = plt.subplots(figsize=(10, 6))
 
     df = load_and_preprocess_data()
-    controls = df[df['label'] == 0].copy()
-    all_antidep = df[df['label'] == 1].copy()
-    multi_therapy = df[df['taxonomy'].str.contains(',')].copy()
-    single_therapy = df[(~df['taxonomy'].str.contains(',')) & (df['label'] != 0)].copy()
-
-    print('Multi-therapy: ', multi_therapy.shape[0])
-    print('Single-therapy: ', single_therapy.shape[0])
-
     df_mros_meds = process_mros_medications(EXP_FOLDER = CSV_DIR)
     df_wsc_meds = process_wsc_medications(EXP_FOLDER = CSV_DIR)
-
+    df_mit_meds = process_mit_medications(EXP_FOLDER = CSV_DIR)
     # Combine medication data
-    df_other = pd.concat([df_mros_meds, df_wsc_meds])
+    df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
     print('Before merge data: ', df.shape[0])
     df = df.merge(df_other, on='filename', how='inner')
+
+    df = df[['filename', 'pred', 'pid', 'label', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'stimulants','dataset', 'taxonomy']].copy()
+    
+    df = df.groupby(['taxonomy','pid', 'label','benzos', 'antipsycho', 'convuls', 'hypnotics', 'stimulants','dataset']).agg({'pred': 'mean'}).reset_index()
+    controls = df[df['label'] == 0].copy()
+    multi_therapy = df[df['taxonomy'].str.contains(',')].copy()
+    single_therapy = df[(~df['taxonomy'].str.contains(',')) & (df['label'] != 0)].copy()
+    
+    
+    print(df[df['dataset'] == 'mros'].shape[0])
+    print(df[df['dataset'] == 'wsc'].shape[0])
+    print(df[df['dataset'] == 'rf'].shape[0])
     print('Total merged data: ', df.shape[0])
 
 
     antidep_plus_benzo = df[(df['label'] == 1) & (df['benzos'] == True)].copy()
     antidep_plus_anticonvulsant = df[(df['label'] == 1) & (df['convuls'] == True)].copy()
     antidep_plus_antipsychotic = df[(df['label'] == 1) & (df['antipsycho'] == True)].copy()
-
+    antidep_plut_antihypnotic = df[(df['label'] == 1) & (df['hypnotics'] == True)].copy()
     g0 = controls['pred'].values 
     g1 = single_therapy['pred'].values 
     g2 = multi_therapy['pred'].values 
     g3 = antidep_plus_benzo['pred'].values 
     g4 = antidep_plus_anticonvulsant['pred'].values 
     g5 = antidep_plus_antipsychotic['pred'].values 
-    cohort = len(g0) * ['Controls'] + len(g1) * ['Single\nAntidep'] + len(g2) * ['Multi-\nAntidep'] + len(g3) * ['Antidep+\nBenzodiazepine'] + len(g4) * ['Antidep+\nAnticonvulsant'] + len(g5) * ['Antidep+\nAntipsychotic']
+    g6 = antidep_plut_antihypnotic['pred'].values
+    
+    cohort = len(g0) * ['Controls'] + len(g1) * ['Single\nAntidep'] + len(g2) * ['Multi-\nAntidep'] + len(g3) * ['Antidep+\nBenzo-\ndiazepine'] + len(g4) * ['Antidep+\nAnti-\nconvulsant'] + len(g5) * ['Antidep+\nAnti-\npsychotic'] + len(g6) * ['Antidep+\nHypnotic']
     df_plot = pd.DataFrame({
         'cohort': cohort,
-        'pred': np.concatenate([g0, g1, g2, g3, g4, g5])
+        'pred': np.concatenate([g0, g1, g2, g3, g4, g5, g6])
     })
-    order = ['Controls', 'Single\nAntidep', 'Antidep+\nAnticonvulsant', 'Antidep+\nAntipsychotic', 'Antidep+\nBenzodiazepine', 'Multi-\nAntidep']
+    order = ['Controls', 'Single\nAntidep', 'Antidep+\nAnti-\nconvulsant', 'Antidep+\nHypnotic', 'Antidep+\nBenzo-\ndiazepine', 'Antidep+\nAnti-\npsychotic', 'Multi-\nAntidep']
     sns.boxplot(x='cohort', y='pred', data=df_plot, showfliers=False, palette='Greens', order=order, ax=ax)
+    ax.tick_params(axis='x', labelsize=font_size-1)
+    ax.tick_params(axis='y', labelsize=font_size)
         # sns.boxplot(
         #     x="medication", y="pred", data=df_viz, 
         #     palette='Greens', ax=ax, order=order, showfliers=False
         # )
-    ax.set_ylabel('Model Score')
-    ax.set_xlabel('Cohort')
+    ax.set_ylabel('Model Score', fontsize=font_size)
+    ax.set_xlabel('Cohort', fontsize=font_size)
 
 
     # Get box positions for bracket drawing
@@ -127,7 +140,7 @@ def generate_cotherapy_analysis_figure(save=True, ax=None):
         q3 = subset['pred'].quantile(0.75)
         print(f'{cohort}: Median={median:.2f}, IQR: [{q1:.2f}-{q3:.2f}]')
         n = subset.shape[0]
-        ax.text(i, median + 0.01, f'N={n}', ha='center', va='bottom', fontsize=10)
+        ax.text(i, median + 0.01, f'N={n}', ha='center', va='bottom', fontsize=font_size)
     
     # Add significance brackets comparing each group to Controls
     bracket_offset = 0
@@ -163,7 +176,7 @@ def generate_cotherapy_analysis_figure(save=True, ax=None):
             ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
             ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
             # Add significance stars
-            ax.text(x2, bracket_y - 0.05, sig_stars, ha='center', va='bottom', fontsize=10)
+            ax.text(x2, bracket_y - 0.05, sig_stars, ha='center', va='bottom', fontsize=font_size)
     
     # Adjust y-axis limits to accommodate brackets
     ax.set_ylim(0, 1.1)

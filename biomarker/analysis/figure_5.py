@@ -21,6 +21,8 @@ from ipdb import set_trace as bp
 # Configuration
 EXP_FOLDER = '../../data/'
 
+FONT_SIZE = 14
+
 def sigmoid(x):
     """Apply sigmoid transformation to convert logits to probabilities."""
     return 1 / (1 + np.exp(-x))
@@ -111,8 +113,8 @@ def create_patient_trajectory_plot(cohorts, titles, save_path):
     # Create figure and subplots
     fig, axs = plt.subplots(
         n_rows, n_cols, 
-        figsize=(18, 8), 
-        gridspec_kw={'wspace': 0.2}
+        figsize=(13, 8), 
+        gridspec_kw={'wspace': 0.25}
     )
     
     # Plot each patient cohort
@@ -148,21 +150,35 @@ def create_patient_trajectory_plot(cohorts, titles, save_path):
             linewidth=2,
             label='Smoothed trend'
         )
-        
+        ## add a b c d in the top left corner 
+        # text(-0.05, 1.05, , fontsize=14, fontweight='bold', transform=ax.transAxes)
+        # ax.text(-0.1, 1.1, ['a)', 'c)', 'b)', 'd)'][plot_idx], transform=ax.transAxes, fontsize=14, fontfamily='Calibri', fontweight='bold', 
+        #   verticalalignment='top', horizontalalignment='left')
         # Customize subplot
         ax.set_ylim(0, 1)
-        ax.set_title(title, fontsize=14, pad=10)
+        ax.set_ylabel('Model Score', fontsize=FONT_SIZE)
+        ax.set_title(title, fontsize=FONT_SIZE, pad=10)
         
         # Format x-axis with monthly ticks
         ax.xaxis.set_major_locator(mdates.MonthLocator())
-        ax.xaxis.set_major_formatter(plt.NullFormatter())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m'))
+        ## set the font size of the x-axis tick labels to FONT_SIZE
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=FONT_SIZE-2)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=FONT_SIZE-2)
+        
+        ## write the month number as the x-axis tick labels
+        
+        # ax.set_xticklabels([f'{int(tick)}' for tick in ax.get_xticks()])
     
     # Add overall figure labels
-    fig.supxlabel('Date (Point=Night, Tick=Month)', y=0.05, fontsize=12)
-    fig.supylabel('Model Score', x=0.09, fontsize=12)
+    # fig.supxlabel('Date (Point=Night, Tick=Month)', y=0.05, fontsize=12)
+    fig.supxlabel('Time (Month)', y=0.05, fontsize=FONT_SIZE)
+    # fig.supylabel('Model Score', x=0.09, fontsize=12)
     
     # Adjust layout and save
     plt.tight_layout()
+    plt.subplots_adjust(hspace=0.3, wspace=0.22)
+    
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     
     print(f"Figure saved to: {save_path}")

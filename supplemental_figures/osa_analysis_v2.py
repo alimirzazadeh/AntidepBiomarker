@@ -7,7 +7,7 @@ import seaborn as sns
 from scipy.stats import ttest_ind
 import sys 
 sys.path.append('../')
-
+font_size = 13
 def get_significance_stars(pval):
     if pval < 1e-10:
         return '***'
@@ -58,7 +58,7 @@ def generate_osa_figure(save=True, ax=None):
 
     # Filter to only include rows with valid predictions
     df_plot = df[df['pred'].notna()].copy()
-
+    print('Unique Datasets used in OSA Analysis: ', df_plot['dataset'].unique())
     # Define order for OSA groups
     osa_labels = ['Normal', 'Mild OSA', 'Moderate OSA', 'Severe OSA']
 
@@ -69,6 +69,8 @@ def generate_osa_figure(save=True, ax=None):
     # Create boxplots using seaborn with hue for paired boxes
     sns.boxplot(data=df_plot, x='osa_group', y='pred', hue='Group', 
                 order=osa_labels, palette='Greens', ax=ax, showfliers=False)
+    ax.tick_params(axis='x', labelsize=font_size)
+    ax.tick_params(axis='y', labelsize=font_size)
     # Remove legend
     ax.legend_.remove()
 
@@ -88,7 +90,7 @@ def generate_osa_figure(save=True, ax=None):
             print(f'{osa_label} Control: Median={median_val:.2f}, IQR: [{q1:.2f}-{q3:.2f}]')
             # Position is box_positions[i] - 0.2 (offset for paired boxes)
             ax.text(box_positions[i] - 0.2, median_val + 0.01, f'N={n}', 
-                ha='center', va='bottom', fontsize=9)
+                ha='center', va='bottom', fontsize=font_size)
         
         # Antidepressant box (right side of pair)
         subset_antidep = df_plot[(df_plot['osa_group'] == osa_label) & 
@@ -101,7 +103,7 @@ def generate_osa_figure(save=True, ax=None):
             print(f'{osa_label} Antidepressant: Median={median_val:.2f}, IQR: [{q1:.2f}-{q3:.2f}]')
             # Position is box_positions[i] + 0.2 (offset for paired boxes)
             ax.text(box_positions[i] + 0.2, median_val + 0.01, f'N={n}', 
-                ha='center', va='bottom', fontsize=9)
+                ha='center', va='bottom', fontsize=font_size)
         
         # Compute t-test between Control and Antidepressant for this bin
         if len(subset_control) > 0 and len(subset_antidep) > 0:
@@ -129,13 +131,14 @@ def generate_osa_figure(save=True, ax=None):
             ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
             ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
             # Add significance stars
-            ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=10)
+            ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=font_size)
 
-    ax.set_ylabel('Model Score', fontsize=12)
-    ax.set_xlabel('Obstructive Sleep Apnea (OSA) Severity', fontsize=12)
+    ax.set_ylabel('Model Score', fontsize=font_size)
+    ax.set_xlabel('Obstructive Sleep Apnea (OSA) Severity', fontsize=font_size)
     ax.set_ylim(0, 1.1)  # Increased to accommodate significance brackets
     ax.grid(axis='y', alpha=0.3, linestyle='--')
-
+    ax.tick_params(axis='x', labelsize=font_size)
+    ax.tick_params(axis='y', labelsize=font_size)
     def cohen_d(x, y):
         return (np.mean(x) - np.mean(y)) / np.sqrt((np.var(x) + np.var(y)) / 2)
 

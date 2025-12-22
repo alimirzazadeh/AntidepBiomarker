@@ -20,7 +20,7 @@ from tqdm import tqdm
 from ipdb import set_trace as bp
 
 CSV_DIR = '../data/'
-def load_and_prepare_data(balanced=False):
+def load_and_prepare_data():
     """
     Load and prepare all datasets for analysis.
     
@@ -49,17 +49,6 @@ def load_and_prepare_data(balanced=False):
         lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
     )
     
-    if balanced:
-        all_rows = [] 
-        for dataset in labels['dataset'].unique():
-            total_positive = int(labels[labels['dataset'] == dataset]['label'].sum())
-            positive_labels = labels[labels['dataset'] == dataset][labels['label'] == 1].copy() 
-            negative_labels = labels[labels['dataset'] == dataset][labels['label'] == 0].copy() 
-            negative_labels = negative_labels.sample(n=total_positive, replace=False)
-            all_rows.append(pd.concat([positive_labels, negative_labels])) 
-
-        labels = pd.concat(all_rows).reset_index(drop=True)
-    
     # Clean participant IDs across datasets
     for dataset in ['wsc', 'mros', 'shhs']:
         mask = labels['dataset'] == dataset
@@ -67,18 +56,18 @@ def load_and_prepare_data(balanced=False):
     
     # Merge with taxonomy data
     labels_model_baseline = pd.merge(labels, df_taxonomy, on='filename', how='inner')
-    labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
-        'pred': 'mean', 
-        'dataset': 'first', 
-        'label': 'first', 
-        'fold': 'first'
-    }).reset_index()
+    # labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
+    #     'pred': 'mean', 
+    #     'dataset': 'first', 
+    #     'label': 'first', 
+    #     'fold': 'first'
+    # }).reset_index()
     
     # Convert logits to probabilities
     labels_model_baseline['prob'] = 1 / (1 + np.exp(-labels_model_baseline['pred']))
     
     # Merge labels with feature datasets
-    labels_subset = labels[['filename', 'label', 'fold', 'dataset', 'mit_gender', 'mit_age']]
+    labels_subset = labels_model_baseline[['filename', 'label', 'fold', 'dataset', 'mit_gender', 'mit_age','taxonomy']]
     df = df.merge(labels_subset, on='filename', how='inner')
     df_eeg = df_eeg.merge(labels_subset, on='filename', how='inner')
     
@@ -344,13 +333,15 @@ def run_cross_validation(df, df_eeg, model1_cols, model2_cols):
         # Store metadata
         test_set_datasets = test_set['dataset'].values
         test_set_labels = test_set['label'].values
+        test_set_filenames = test_set['filename'].values
+        test_set_taxonomy = test_set['taxonomy'].values
         
         # Prepare feature matrices
-        train_features = train_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
-        test_features = test_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+        train_features = train_set.drop(columns=['filename', 'fold', 'dataset', 'label','taxonomy']).values
+        test_features = test_set.drop(columns=['filename', 'fold', 'dataset', 'label','taxonomy']).values
         
-        train_features_eeg = train_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
-        test_features_eeg = test_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+        train_features_eeg = train_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label','taxonomy']).values
+        test_features_eeg = test_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label','taxonomy']).values
         
         # Train and evaluate sleep stage model
         print('Sleep Stage Model:')
@@ -362,7 +353,9 @@ def run_cross_validation(df, df_eeg, model1_cols, model2_cols):
             'prob': probs_sleep,
             'label': test_set_labels,
             'dataset': test_set_datasets,
-            'fold': fold
+            'fold': fold,
+            'taxonomy': test_set_taxonomy,
+            'filename': test_set_filenames,
         })
         result_sleep_stage = pd.concat([result_sleep_stage, fold_result_sleep], ignore_index=True)
         
@@ -376,14 +369,16 @@ def run_cross_validation(df, df_eeg, model1_cols, model2_cols):
             'prob': probs_eeg,
             'label': test_set_labels,
             'dataset': test_set_datasets,
-            'fold': fold
+            'fold': fold,
+            'taxonomy': test_set_taxonomy,
+            'filename': test_set_filenames,
         })
         result_eeg = pd.concat([result_eeg, fold_result_eeg], ignore_index=True)
     
     return result_sleep_stage, result_eeg
 
 
-def evaluate_per_dataset_performance(result_sleep, result_eeg, labels_model_baseline):
+def evaluate_per_dataset_performance(all_results):
     """
     Evaluate and print per-dataset performance for all models.
     
@@ -399,13 +394,16 @@ def evaluate_per_dataset_performance(result_sleep, result_eeg, labels_model_base
     print('\n' + '='*50)
     print('PER-DATASET PERFORMANCE EVALUATION')
     print('='*50)
+    result_sleep = all_results[['dataset','label','prob_sleep_stage','fold']].copy().rename(columns={'prob_sleep_stage': 'prob'}).dropna()
+    result_eeg = all_results[['dataset','label','prob_eeg','fold']].copy().rename(columns={'prob_eeg': 'prob'}).dropna()
+    result_biomarker = all_results[['dataset','label','prob_biomarker','fold']].copy().rename(columns={'prob_biomarker': 'prob'}).dropna()
     
     for dataset in result_sleep['dataset'].unique():
         print(f'\n--- {dataset.upper()} Dataset ---')
         
         # Sleep Stage Model
         dataset_mask = result_sleep['dataset'] == dataset
-        print('Baseline AUPRC: ', result_sleep[dataset_mask]['label'].mean())
+        print('Baseline AUPRC: ', result_biomarker[result_biomarker['dataset'] == dataset]['label'].mean())
         print(f'{dataset} Sleep Stage Model:')
         auroc = average_precision_score(
             result_sleep[dataset_mask]['label'], 
@@ -456,26 +454,26 @@ def evaluate_per_dataset_performance(result_sleep, result_eeg, labels_model_base
         
         # Our Model
         print(f'\n{dataset} Our Model:')
-        dataset_mask_our = labels_model_baseline['dataset'] == dataset
+        dataset_mask_our = result_biomarker['dataset'] == dataset
         if dataset_mask_our.sum() > 0:
             auroc_our = average_precision_score(
-                labels_model_baseline[dataset_mask_our]['label'], 
-                labels_model_baseline[dataset_mask_our]['prob']
+                result_biomarker[dataset_mask_our]['label'], 
+                result_biomarker[dataset_mask_our]['prob']
             )
             bootstrap_auroc_ci(
-                labels_model_baseline[dataset_mask_our]['label'], 
-                labels_model_baseline[dataset_mask_our]['prob']
+                result_biomarker[dataset_mask_our]['label'], 
+                result_biomarker[dataset_mask_our]['prob']
             )
             
             # Per-fold AUROC for Our Model (skip WSC as it doesn't have folds)
             fold_aurocs_our = []
             if dataset != 'wsc':
                 for fold in range(4):
-                    fold_mask_our = dataset_mask_our & (labels_model_baseline['fold'] == fold)
+                    fold_mask_our = dataset_mask_our & (result_biomarker['fold'] == fold)
                     if fold_mask_our.sum() > 0:
                         fold_aurocs_our.append(average_precision_score(
-                            labels_model_baseline[fold_mask_our]['label'], 
-                            labels_model_baseline[fold_mask_our]['prob']
+                            result_biomarker[fold_mask_our]['label'], 
+                            result_biomarker[fold_mask_our]['prob']
                         ))
             
             print(f'AUROC: {auroc_our:.4f}')
@@ -485,68 +483,32 @@ def evaluate_per_dataset_performance(result_sleep, result_eeg, labels_model_base
     
     # Additional datasets for our model only
     for dataset in ['hchs', 'rf']:
-        if dataset in labels_model_baseline['dataset'].values:
+        if dataset in result_biomarker['dataset'].values:
             print(f'{dataset} Our Model:')
-            dataset_mask = labels_model_baseline['dataset'] == dataset
-            print('Baseline AUPRC: ', labels_model_baseline[dataset_mask]['label'].mean())
+            dataset_mask = result_biomarker['dataset'] == dataset
+            print('Baseline AUPRC: ', result_biomarker[dataset_mask]['label'].mean())
             auroc = average_precision_score(
-                labels_model_baseline[dataset_mask]['label'], 
-                labels_model_baseline[dataset_mask]['prob']
+                result_biomarker[dataset_mask]['label'], 
+                result_biomarker[dataset_mask]['prob']
             )
             bootstrap_auroc_ci(
-                labels_model_baseline[dataset_mask]['label'], 
-                labels_model_baseline[dataset_mask]['prob']
+                result_biomarker[dataset_mask]['label'], 
+                result_biomarker[dataset_mask]['prob']
             )
             
             # Per-fold AUROC
             fold_aurocs = []
             for fold in range(4):
-                fold_mask = dataset_mask & (labels_model_baseline['fold'] == fold)
+                fold_mask = dataset_mask & (result_biomarker['fold'] == fold)
                 if fold_mask.sum() > 0:
                     fold_aurocs.append(average_precision_score(
-                        labels_model_baseline[fold_mask]['label'], 
-                        labels_model_baseline[fold_mask]['prob']
+                        result_biomarker[fold_mask]['label'], 
+                        result_biomarker[fold_mask]['prob']
                     ))
             
             print(f'AUROC: {auroc:.4f}')
             print(f'Fold AUROC: {fold_aurocs}')
             print()
-
-
-def evaluate_overall_performance(result_sleep, result_eeg, labels_model_baseline):
-    """
-    Evaluate and print overall performance across all datasets.
-    
-    Parameters:
-    -----------
-    result_sleep : DataFrame
-        Sleep stage model results
-    result_eeg : DataFrame
-        EEG model results
-    labels_model_baseline : DataFrame
-        Our model results
-    """
-    print('\n' + '='*50)
-    print('OVERALL PERFORMANCE EVALUATION')
-    print('='*50)
-    
-    # Sleep Stage Model Overall
-    print('Overall Sleep Stage Model:')
-    auroc_sleep = average_precision_score(result_sleep['label'], result_sleep['prob'])
-    print(f'AUROC: {auroc_sleep:.4f}')
-    bootstrap_auroc_ci(result_sleep['label'], result_sleep['prob'])
-    
-    # EEG Model Overall
-    print('\nOverall EEG Model:')
-    auroc_eeg = average_precision_score(result_eeg['label'], result_eeg['prob'])
-    print(f'AUROC: {auroc_eeg:.4f}')
-    bootstrap_auroc_ci(result_eeg['label'], result_eeg['prob'])
-    
-    # Our Model Overall
-    print('\nOverall Our Model:')
-    auroc_our = average_precision_score(labels_model_baseline['label'], labels_model_baseline['prob'])
-    print(f'AUROC: {auroc_our:.4f}')
-    bootstrap_auroc_ci(labels_model_baseline['label'], labels_model_baseline['prob'])
 
 
 def main():
@@ -560,15 +522,49 @@ def main():
     
     # Load and prepare data
     print("\n1. Loading and preparing datasets...")
-    df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data(balanced=True)
+    df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data()
     
     # Run cross-validation
     print("\n2. Running 4-fold cross-validation...")
     result_sleep_stage, result_eeg = run_cross_validation(df, df_eeg, model1_cols, model2_cols)
     
+
+    ## group each df by patient
+    if True:
+        result_biomarker = labels_model_baseline[['prob','label','dataset','fold','taxonomy','filename','pid']].copy()
+        result_biomarker.rename(columns={'prob': 'prob_biomarker'}, inplace=True)
+        result_eeg.rename(columns={'prob': 'prob_eeg'}, inplace=True)
+        result_sleep_stage.rename(columns={'prob': 'prob_sleep_stage'}, inplace=True)
+        all_results = pd.merge(result_biomarker, result_eeg[['filename', 'prob_eeg']].copy(), on='filename', how='left')
+        all_results = pd.merge(all_results, result_sleep_stage[['filename', 'prob_sleep_stage']].copy(), on='filename', how='left')
+        
+        all_results = all_results.groupby(['pid', 'taxonomy']).agg({'prob_biomarker': 'mean', 'prob_eeg': 'mean', 'prob_sleep_stage': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'filename': 'first'}).reset_index()
+        # result_biomarker = result_biomarker.groupby(['pid', 'taxonomy']).agg({'prob': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'taxonomy': 'first', 'filename': 'first'}).reset_index()
+        # result_eeg = result_eeg.groupby(['pid', 'taxonomy']).agg({'prob': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'taxonomy': 'first', 'filename': 'first'}).reset_index()
+        # result_sleep_stage = result_sleep_stage.groupby(['pid', 'taxonomy']).agg({'prob': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'taxonomy': 'first', 'filename': 'first'}).reset_index()
+        all_rows = [] 
+        for dataset in all_results['dataset'].unique():
+            # if dataset == 'mros':
+            #     bp() 
+            # total_positive = int(all_results[all_results['dataset'] == dataset]['label'].sum())
+            positive_labels = all_results[all_results['dataset'] == dataset][all_results['label'] == 1].copy() 
+            negative_labels = all_results[all_results['dataset'] == dataset][all_results['label'] == 0].copy() 
+            total_positive = len(positive_labels)
+            ## For balanced, uncomment this:
+            # negative_labels = negative_labels.sample(n=total_positive, replace=False)
+            all_rows.append(pd.concat([positive_labels, negative_labels])) 
+
+        all_results = pd.concat(all_rows).reset_index(drop=True)
+    bp() 
+    # labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
+    #     'pred': 'mean', 
+    #     'dataset': 'first', 
+    #     'label': 'first', 
+    #     'fold': 'first'
+    # }).reset_index()
     # Evaluate per-dataset performance
     print("\n3. Evaluating per-dataset performance...")
-    evaluate_per_dataset_performance(result_sleep_stage, result_eeg, labels_model_baseline)
+    evaluate_per_dataset_performance(all_results)
     
     # Evaluate overall performance 
     # print("\n4. Evaluating overall performance...")

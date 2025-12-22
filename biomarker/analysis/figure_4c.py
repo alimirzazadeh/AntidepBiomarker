@@ -16,14 +16,17 @@ import seaborn as sns
 from sklearn.metrics import roc_auc_score
 
 # Configuration
-INFERENCE_FILE = '../../data/inference_v6emb_3920_all_dosagev2.csv'
-TAXONOMY_FILE = '../../data/antidep_taxonomy_all_datasets_v6.csv'
-OUTPUT_FILE = 'figure_4c.png'
+INFERENCE_FILE = 'data/inference_v6emb_3920_all_dosagev2.csv'
+TAXONOMY_FILE = 'data/antidep_taxonomy_all_datasets_v6.csv'
+OUTPUT_FILE = 'biomarker/analysis/figure_4c.png'
 DOSAGE_COL = 'dosage_v2' if 'dosagev2' in INFERENCE_FILE else 'dosage'
 
 # Dosage binning configuration
 DOSAGE_BREAKS = [0, 0.25, 0.75, 1.75, 2.75, np.inf]
 DOSAGE_LABELS = ['0', '0.25-0.75', '0.75-1.75', '1.75-2.75', '2.75+']
+
+FONT_SIZE=7
+FONT_FAMILY = 'sans-serif'
 
 def load_and_preprocess_data():
     """
@@ -101,7 +104,7 @@ def create_visualization(df_per_night, df_per_patient):
     total_patients = df_per_patient.shape[0]
     
     # Create figure
-    fig, ax = plt.subplots(1, 1, figsize=(7, 4))
+    fig, ax = plt.subplots(1, 1, figsize=(3.6, 2.6))
     
     # Create color palette
     n_categories = len(df_per_patient['Dosage (Proportion of Standard Dose)'].unique())
@@ -118,9 +121,14 @@ def create_visualization(df_per_night, df_per_patient):
     )
     
     # Set labels and title
-    ax.set_title(f'Model Score Per Patient (N={total_patients} patients, {total_nights} nights)')
+    # ax.set_title(f'Model Score Per Patient (N={total_patients} patients, {total_nights} nights)', fontsize=FONT_SIZE, fontfamily=FONT_FAMILY)
     ax.set_ylim(0, 1)
-    ax.set_ylabel('Model Score')
+    ax.set_ylabel('Model Score', fontsize=FONT_SIZE, fontfamily=FONT_FAMILY)
+    ax.set_xlabel('Dosage (Proportion of Standard Dose)', fontsize=FONT_SIZE, fontfamily=FONT_FAMILY)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    ax.tick_params(axis='x', labelsize=FONT_SIZE)
+    ax.tick_params(axis='y', labelsize=FONT_SIZE)
     
     # Adjust layout and save
     plt.tight_layout()
@@ -144,10 +152,9 @@ def main():
     
     # Create per-patient analysis (median aggregation)
     df_per_patient = df.groupby(['pid', DOSAGE_COL, 'taxonomy']).agg({
-        'pred': 'median'
+        'pred': 'mean'
     }).reset_index()
-    from ipdb import set_trace as bp
-    bp() 
+
     # Add dosage bins to per-patient data
     df_per_patient = create_dosage_bins(df_per_patient)
     
