@@ -222,7 +222,12 @@ def plot_binned_boxplots(x, y, min_x, max_x, n_bins=8, ax=None):
     ax.text(0.02, 0.8, label, ha='left', va='bottom', transform=ax.transAxes)
     y_pos = np.zeros(len(boxplots))
     for i in range(len(boxplots)):
-        y_pos[i] = np.median(boxplots[i])
+        # y_pos[i] = np.median(boxplots[i])
+        ## get the top of the boxplot
+        if i <= 2:
+            y_pos[i] = np.percentile(boxplots[i], 75)
+        else:
+            y_pos[i] = np.percentile(boxplots[i], 75) - 0.08
     for i in range(len(boxplots)):
         ax.text(i, y_pos[i], f'N={len(boxplots[i])}', ha='center', va='bottom', fontsize=FONT_SIZE-1)
     ax.set_xticks(np.arange(0, len(bins) - 1))

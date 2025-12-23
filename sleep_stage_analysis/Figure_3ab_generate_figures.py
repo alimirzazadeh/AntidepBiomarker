@@ -95,9 +95,9 @@ if True:
         # Add text annotations for significance and effect size
         # Function to get significance stars
         def get_significance_stars(pval):
-            if pval < 1e-10:
+            if pval < .001: #1e-10:
                 return '***'
-            elif pval < 0.001:
+            elif pval < 0.01: #0.001:
                 return '**'
             elif pval < 0.05:
                 return '*'
@@ -128,7 +128,18 @@ if True:
         annotation_gt = stars_gt + '\n' + crosses_gt if stars_gt or crosses_gt else ''
         
         if annotation_gt:
-            # Position between GT Control (0) and GT Antidep (1)
+            # Draw bracket line between GT Control (0) and GT Antidep (1)
+            bracket_y = y_pos - (y_max - y_min) * 0.02  # Position bracket slightly below text
+            # Offset slightly inward to avoid intersecting with boxplots
+            x1_gt = 0.15
+            x2_gt = 0.85
+            bracket_color = '#666666'  # Gray color matching seaborn boxplot whiskers
+            # Draw horizontal line
+            ax[i // 2, i % 2].plot([x1_gt, x2_gt], [bracket_y, bracket_y], color=bracket_color, linewidth=1)
+            # Draw vertical lines at ends
+            ax[i // 2, i % 2].plot([x1_gt, x1_gt], [bracket_y - (y_max - y_min) * 0.01, bracket_y], color=bracket_color, linewidth=1)
+            ax[i // 2, i % 2].plot([x2_gt, x2_gt], [bracket_y - (y_max - y_min) * 0.01, bracket_y], color=bracket_color, linewidth=1)
+            # Position text above the bracket
             ax[i // 2, i % 2].text(0.5, y_pos, annotation_gt, 
                       ha='center', va='bottom', fontsize=FONT_SIZE, color='black')
         
@@ -138,7 +149,18 @@ if True:
         annotation_pred = stars_pred + '\n' + crosses_pred if stars_pred or crosses_pred else ''
         
         if annotation_pred:
-            # Position between Pred Control (2) and Pred Antidep (3)
+            # Draw bracket line between Pred Control (2) and Pred Antidep (3)
+            bracket_y = y_pos - (y_max - y_min) * 0.02  # Position bracket slightly below text
+            # Offset slightly inward to avoid intersecting with boxplots
+            x1_pred = 2.15
+            x2_pred = 2.85
+            bracket_color = '#666666'  # Gray color matching seaborn boxplot whiskers
+            # Draw horizontal line
+            ax[i // 2, i % 2].plot([x1_pred, x2_pred], [bracket_y, bracket_y], color=bracket_color, linewidth=1)
+            # Draw vertical lines at ends
+            ax[i // 2, i % 2].plot([x1_pred, x1_pred], [bracket_y - (y_max - y_min) * 0.01, bracket_y], color=bracket_color, linewidth=1)
+            ax[i // 2, i % 2].plot([x2_pred, x2_pred], [bracket_y - (y_max - y_min) * 0.01, bracket_y], color=bracket_color, linewidth=1)
+            # Position text above the bracket
             ax[i // 2, i % 2].text(2.5, y_pos, annotation_pred, 
                       ha='center', va='bottom', fontsize=FONT_SIZE, color='black')
         

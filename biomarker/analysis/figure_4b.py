@@ -1,61 +1,30 @@
-"""
-Antidepressant Types Ablation Analysis for Sleep Study Model
-===========================================================
-
-This script analyzes model performance across different antidepressant medications
-and medication classes, generating results for Figure 4 of the paper submission.
-The analysis computes AUC, sensitivity, specificity, PPV, and NPV for each 
-medication type versus controls.
-
-"""
-
 import os
-import numpy as np
 import pandas as pd
+import numpy as np
 from ipdb import set_trace as bp
-from sklearn.metrics import roc_auc_score, f1_score, confusion_matrix
+import sys 
+sys.path.append('./')
+from biomarker.analysis.figure_4d import process_mros_medications, process_wsc_medications, process_mit_medications
+CSV_DIR = 'data/'
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import ttest_ind
 
-# Configuration
-# INFERENCE_FILE = '../../data/inference_v6emb_3920_all.csv'
-# INFERENCE_FILE = '../../data/nodulox_inference_v6emb_3920_all.csv'
-INFERENCE_FILE = '../../data/inference_v6emb_3920_all_novenlafaxine.csv'
+ANONYMIZED = TRUE 
 
-TAXONOMY_FILE = '../../data/antidep_taxonomy_all_datasets_v6.csv'
-
-# Analysis configuration
-EVALUATE_BY_DATASET = True 
-ONLY_SINGLE_MEDICATION = True
-THRESHOLD = 0.25
-N_BOOTSTRAP = 1000
-RANDOM_STATE = 42
-
-# Medication mappings
-MEDICATION_MAPPING = {
-    'NSEE': 'Escitalopram',
-    'NSEC': 'Citalopram', 
-    'NSFx': 'Fluoxetine',
-    'NSSx': 'Sertraline',
-    'NSPx': 'Paroxetine',
-    'NNVx': 'Venlafaxine',
-    'NNDx': 'Desvenlafaxine',
-    'NNUx': 'Duloxetine',
-    'NVxx': 'Vortioxetine',
-    'NMxx': 'Mirtazapine',
-    'NBxx': 'Bupropion',
-    'TAxx': 'Amitryptiline',
-    'TIxx': 'Imipramine',
-    'TNxx': 'Nortriptyline',
-    'TDxx': 'Doxepin'
-}
-
-MEDICATION_TYPE_MAPPING = {
-    'NS': 'SSRI',
-    'NN': 'SNRI', 
-    'NV': 'Vortioxetine',
-    'NM': 'Mirtazapine',
-    'NB': 'Bupropion',
-    'T': 'TCA'
-}
+SUBTYPE = False
+font_size = 12
+def get_significance_stars(pval):
+    if pval < .001: #1e-10:
+        return '***'
+    elif pval < 0.01: #0.001:
+        return '**'
+    elif pval < 0.05:
+        return '*'
+    else:
+        return 'ns'
+INFERENCE_FILE = os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv')
+TAXONOMY_FILE = os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv')
 
 def load_and_preprocess_data():
     """
@@ -66,294 +35,160 @@ def load_and_preprocess_data():
     """
     # Load inference results
     df = pd.read_csv(INFERENCE_FILE)
-    
-    # Group by filename and aggregate (mean for numeric, first for non-numeric)
-    df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
-    df = df.groupby('filename').agg(
-        lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
-    )
-    
-    # Convert logits to probabilities using sigmoid
-    df['pred'] = 1 / (1 + np.exp(-df['pred']))
-    
-    # Clean patient IDs by removing dataset prefixes
-    df['pid'] = df.apply(
-        lambda x: x['pid'][1:] if x['dataset'] in ['shhs', 'mros', 'wsc'] else x['pid'], 
-        axis=1
-    )
+    df = df[df['dataset'].isin(['mros', 'wsc','rf'])].copy() 
+
+    if not ANONYMIZED:    
+        # Group by filename and aggregate (mean for numeric, first for non-numeric)
+        df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
+        df = df.groupby('filename').agg(
+            lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
+        )
+        
+        # Convert logits to probabilities using sigmoid
+        df['pred'] = 1 / (1 + np.exp(-df['pred']))
+        
+        # Clean patient IDs by removing dataset prefixes
+        df['pid'] = df.apply(
+            lambda x: x['pid'][1:] if x['dataset'] in ['shhs', 'mros', 'wsc'] else x['pid'], 
+            axis=1
+        )
     
     # Load and merge taxonomy data
     df_taxonomy = pd.read_csv(TAXONOMY_FILE)
     df = pd.merge(df, df_taxonomy, on='filename', how='inner')
-    
+    if SUBTYPE: 
+        df['is_tca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('T') or ',T' in x else 0)
+        df['is_ntca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('N') or ',N' in x else 0)
+        df['is_snri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NN') or ',NN' in x else 0)
+        df['is_ssri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NS') or ',NS' in x else 0)
+        # df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
+        df = df[(df['is_snri'] == 1) | (df['is_ssri'] == 1) | (df['is_ntca'] == 1) | (df['is_tca'] == 1) | (df['label'] == 0)]
     # Group by patient and taxonomy, taking mean of predictions
-    df = df.groupby(['pid', 'taxonomy'], as_index=False).agg(
-        lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
-    )
+    # bp() 
+    # df = df.groupby(['pid', 'taxonomy'], as_index=False).agg(
+    #     lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
+    # )
     
     print(f'Total Patient-Taxonomy Combinations: {df.shape[0]}')
     return df
 
-def calculate_ppv_npv_bootstrap(labels, y_pred, n_boot=N_BOOTSTRAP, 
-                               threshold=THRESHOLD, random_state=RANDOM_STATE):
-    """
-    Calculate PPV and NPV with bootstrap confidence intervals.
-    
-    Args:
-        labels (array): True binary labels
-        y_pred (array): Predicted probabilities or binary predictions
-        n_boot (int): Number of bootstrap iterations
-        threshold (float): Threshold for binary classification
-        random_state (int): Random seed for reproducibility
-    """
-    rng = np.random.default_rng(random_state)
-    
-    labels = np.asarray(labels)
-    y_pred = np.asarray(y_pred)
-    
-    # Get positive and negative indices
-    positives = np.where(labels == 1)[0]
-    negatives = np.where(labels == 0)[0]
-    n_pos = len(positives)
-    
-    ppv_list = []
-    npv_list = []
-    
-    # Bootstrap sampling
-    for _ in range(n_boot):
-        pos_idx = rng.choice(positives, size=n_pos, replace=True)
-        neg_idx = rng.choice(negatives, size=n_pos, replace=True)  # Balanced sampling
-        
-        idx = np.concatenate([pos_idx, neg_idx])
-        y_true = labels[idx]
-        y_prob = y_pred[idx]
-        y_bin = (y_prob >= threshold).astype(int)
-        
-        # Calculate confusion matrix
-        tn, fp, fn, tp = confusion_matrix(y_true, y_bin, labels=[0, 1]).ravel()
-        
-        # Calculate PPV and NPV
-        ppv = tp / (tp + fp) if (tp + fp) > 0 else np.nan
-        npv = tn / (tn + fn) if (tn + fn) > 0 else np.nan
-        
-        ppv_list.append(ppv)
-        npv_list.append(npv)
-    
-    # Calculate statistics
-    ppv_mean = np.round(np.nanmean(ppv_list), 2)
-    npv_mean = np.round(np.nanmean(npv_list), 2)
-    ppv_95ci = tuple(np.round(np.nanpercentile(ppv_list, [2.5, 97.5]), 2))
-    npv_95ci = tuple(np.round(np.nanpercentile(npv_list, [2.5, 97.5]), 2))
-    
-    print(f'    PPV: {ppv_mean} ({ppv_95ci[0]} - {ppv_95ci[1]})')
-    print(f'    NPV: {npv_mean} ({npv_95ci[0]} - {npv_95ci[1]})')
+def generate_cotherapy_analysis_figure(save=True, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 6))
 
-def calculate_sensitivity_specificity(y_true, y_pred):
-    """
-    Calculate sensitivity and specificity from binary predictions.
-    
-    Args:
-        y_true (array): True binary labels
-        y_pred (array): Predicted binary labels
-        
-    Returns:
-        tuple: (sensitivity, specificity)
-    """
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
-    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
-    return sensitivity, specificity
-
-def analyze_single_medications(df):
-    """
-    Analyze performance for individual medications (single medication only).
-    
-    Args:
-        df (pd.DataFrame): Preprocessed dataframe
-    """
-    print("Individual Medication Analysis")
-    print("=" * 50)
-    
-    # Get available single medications (no combinations)
-    available_meds = df['taxonomy'].unique()
-    available_meds = [item for item in available_meds if ',' not in item and item != 'C']
-    print(f"Available medications: {available_meds}")
-    
-    controls = df[df['taxonomy'] == 'C']['pred'].values
-    
-    for med_code in MEDICATION_MAPPING:
-        if med_code not in available_meds:
-            print(f'{med_code} not available in dataset')
-            continue
-        
-        # Get medication predictions
-        med_vals = df[df['taxonomy'] == med_code]['pred'].values
-        
-        # Prepare labels and predictions for analysis
-        labels = np.concatenate([np.zeros_like(controls), np.ones_like(med_vals)])
-        preds = np.concatenate([controls, med_vals])
-        
-        # Calculate AUC
-        auc = np.round(roc_auc_score(labels, preds), 3)
-        med_name = MEDICATION_MAPPING[med_code]
-        
-        print(f'{med_name}: AUC = {auc:.3f}, N = {len(med_vals)}')
-        
-        # Calculate performance metrics at fixed threshold
-        y_pred = (preds >= THRESHOLD).astype(int)
-        sens, spec = calculate_sensitivity_specificity(labels, y_pred)
-        
-        print(f'  - Threshold {THRESHOLD}: Sensitivity = {sens:.3f}, Specificity = {spec:.3f}')
-        calculate_ppv_npv_bootstrap(labels, y_pred)
-        print()
-
-def analyze_medication_types(df):
-    """
-    Analyze performance for medication types/classes.
-    
-    Args:
-        df (pd.DataFrame): Preprocessed dataframe
-    """
-    print("\nMedication Type Analysis")
-    print("=" * 50)
-    
-    controls = df[df['taxonomy'] == 'C']['pred'].values
-    
-    for type_code, type_name in MEDICATION_TYPE_MAPPING.items():
-        # Create boolean mask for medication type
-        df[type_code] = df['taxonomy'].apply(
-            lambda x: x.startswith(type_code) and ',' not in x
-        )
-        
-        med_type_vals = df[df[type_code] == True]['pred'].values
-        
-        if len(med_type_vals) == 0:
-            print(f'{type_name}: No data available')
-            continue
-        
-        # Prepare labels and predictions
-        labels = np.concatenate([np.zeros_like(controls), np.ones_like(med_type_vals)])
-        preds = np.concatenate([controls, med_type_vals])
-        
-        # Calculate AUC
-        auc = np.round(roc_auc_score(labels, preds), 3)
-        print(f'{type_name}: AUC = {auc:.3f}, N = {len(med_type_vals)}')
-        
-        # Calculate performance metrics at fixed threshold
-        y_pred = (preds >= THRESHOLD).astype(int)
-        sens, spec = calculate_sensitivity_specificity(labels, y_pred)
-        
-        print(f'  - Threshold {THRESHOLD}: Sensitivity = {sens:.3f}, Specificity = {spec:.3f}')
-        calculate_ppv_npv_bootstrap(labels, y_pred)
-        
-        # Dataset-specific analysis
-        print(f'  - Dataset-specific results:')
-        for dataset in df['dataset'].unique():
-            dataset_controls = df[
-                (df['taxonomy'] == 'C') & (df['dataset'] == dataset)
-            ]['pred'].values
-            
-            dataset_med_vals = df[
-                (df[type_code] == True) & (df['dataset'] == dataset)
-            ]['pred'].values
-            
-            if len(dataset_med_vals) == 0:
-                continue
-            
-            dataset_labels = np.concatenate([
-                np.zeros_like(dataset_controls), 
-                np.ones_like(dataset_med_vals)
-            ])
-            dataset_preds = np.concatenate([dataset_controls, dataset_med_vals])
-            
-            dataset_auc = np.round(roc_auc_score(dataset_labels, dataset_preds), 3)
-            print(f'    {dataset}: AUC = {dataset_auc:.3f}, N = {len(dataset_med_vals)}')
-        
-        print()
-
-def analyze_combination_medications(df):
-    """
-    Analyze performance including combination medications.
-    
-    Args:
-        df (pd.DataFrame): Preprocessed dataframe
-    """
-    print("\nCombination Medication Analysis")
-    print("=" * 50)
-    
-    controls = df[df['taxonomy'] == 'C']['pred'].values
-    
-    # Individual medications (including combinations)
-    for med_code, med_name in MEDICATION_MAPPING.items():
-        # Create mask for medications (including combinations)
-        med_mask = []
-        for taxonomy in df['taxonomy'].values:
-            med_list = taxonomy.split(',')
-            med_mask.append(med_code in med_list)
-        
-        if not any(med_mask):
-            print(f'{med_name}: Not found in combinations')
-            continue
-        
-        med_vals = df[med_mask]['pred'].values
-        labels = np.concatenate([np.zeros_like(controls), np.ones_like(med_vals)])
-        preds = np.concatenate([controls, med_vals])
-        
-        auc = np.round(roc_auc_score(labels, preds), 3)
-        print(f'{med_name}: AUC = {auc:.3f}, N = {len(med_vals)}')
-    
-    print()
-    
-    # Medication types (including combinations)
-    for type_code, type_name in MEDICATION_TYPE_MAPPING.items():
-        med_mask = []
-        for taxonomy in df['taxonomy'].values:
-            med_list = taxonomy.split(',')
-            type_match = any(med.startswith(type_code) for med in med_list)
-            med_mask.append(type_match)
-        
-        if not any(med_mask):
-            print(f'{type_name}: Not found in combinations')
-            continue
-        
-        med_vals = df[med_mask]['pred'].values
-        labels = np.concatenate([np.zeros_like(controls), np.ones_like(med_vals)])
-        preds = np.concatenate([controls, med_vals])
-        
-        auc = np.round(roc_auc_score(labels, preds), 3)
-        print(f'{type_name}: AUC = {auc:.3f}, N = {len(med_vals)}')
-
-def main():
-    """
-    Main analysis pipeline.
-    """
-    print("Starting Antidepressant Types Ablation Analysis...")
-    print("=" * 60)
-    
-    # Load and preprocess data
     df = load_and_preprocess_data()
-    
-    if EVALUATE_BY_DATASET:
-        for dataset in df['dataset'].unique():
-            print(f"\nAnalyzing {dataset} dataset")
-            dataset_df = df[df['dataset'] == dataset]
-            try:
-                analyze_single_medications(dataset_df)
-                # analyze_medication_types(dataset_df)
-            except Exception as e:
-                print(f"Error analyzing {dataset} dataset: {e}")
-                continue
-    bp() 
-    
-    if ONLY_SINGLE_MEDICATION:
-        print(f"\nAnalyzing single medications only (threshold = {THRESHOLD})")
-        analyze_single_medications(df)
-        analyze_medication_types(df)
-    else:
-        print(f"\nAnalyzing all medications including combinations")
-        analyze_combination_medications(df)
-    
-    print("Analysis completed successfully!")
+    df_mros_meds = process_mros_medications(EXP_FOLDER = CSV_DIR)
+    df_wsc_meds = process_wsc_medications(EXP_FOLDER = CSV_DIR)
+    df_mit_meds = process_mit_medications(EXP_FOLDER = CSV_DIR)
+    # Combine medication data
+    df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
+    print('Before merge data: ', df.shape[0])
+    df = df.merge(df_other, on='filename', how='inner')
 
-if __name__ == "__main__":
-    main()
+    df = df[['filename', 'pred', 'pid', 'label', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'stimulants','dataset', 'taxonomy']].copy()
+    
+    df = df.groupby(['taxonomy','pid', 'label','benzos', 'antipsycho', 'convuls', 'hypnotics', 'stimulants','dataset']).agg({'pred': 'mean'}).reset_index()
+    controls = df[df['label'] == 0].copy()
+    multi_therapy = df[df['taxonomy'].str.contains(',')].copy()
+    single_therapy = df[(~df['taxonomy'].str.contains(',')) & (df['label'] != 0)].copy()
+    
+    
+    print(df[df['dataset'] == 'mros'].shape[0])
+    print(df[df['dataset'] == 'wsc'].shape[0])
+    print(df[df['dataset'] == 'rf'].shape[0])
+    print('Total merged data: ', df.shape[0])
+
+
+    antidep_plus_benzo = df[(df['label'] == 1) & (df['benzos'] == True)].copy()
+    antidep_plus_anticonvulsant = df[(df['label'] == 1) & (df['convuls'] == True)].copy()
+    antidep_plus_antipsychotic = df[(df['label'] == 1) & (df['antipsycho'] == True)].copy()
+    antidep_plut_antihypnotic = df[(df['label'] == 1) & (df['hypnotics'] == True)].copy()
+    g0 = controls['pred'].values 
+    g1 = single_therapy['pred'].values 
+    g2 = multi_therapy['pred'].values 
+    g3 = antidep_plus_benzo['pred'].values 
+    g4 = antidep_plus_anticonvulsant['pred'].values 
+    g5 = antidep_plus_antipsychotic['pred'].values 
+    g6 = antidep_plut_antihypnotic['pred'].values
+    
+    cohort = len(g0) * ['Controls'] + len(g1) * ['Single\nAntidep'] + len(g2) * ['Multi-\nAntidep'] + len(g3) * ['Antidep+\nBenzo-\ndiazepine'] + len(g4) * ['Antidep+\nAnti-\nconvulsant'] + len(g5) * ['Antidep+\nAnti-\npsychotic'] + len(g6) * ['Antidep+\nHypnotic']
+    df_plot = pd.DataFrame({
+        'cohort': cohort,
+        'pred': np.concatenate([g0, g1, g2, g3, g4, g5, g6])
+    })
+    order = ['Controls', 'Single\nAntidep', 'Antidep+\nAnti-\nconvulsant', 'Antidep+\nHypnotic', 'Antidep+\nBenzo-\ndiazepine', 'Antidep+\nAnti-\npsychotic', 'Multi-\nAntidep']
+    sns.boxplot(x='cohort', y='pred', data=df_plot, showfliers=False, palette='Greens', order=order, ax=ax)
+    ax.tick_params(axis='x', labelsize=font_size-1)
+    ax.tick_params(axis='y', labelsize=font_size)
+        # sns.boxplot(
+        #     x="medication", y="pred", data=df_viz, 
+        #     palette='Greens', ax=ax, order=order, showfliers=False
+        # )
+    ax.set_ylabel('Model Score', fontsize=font_size)
+    ax.set_xlabel('Cohort', fontsize=font_size)
+
+
+    # Get box positions for bracket drawing
+    box_positions = ax.get_xticks()
+    
+    # Get control values (first group)
+    control_values = df_plot[df_plot['cohort'] == 'Controls']['pred'].values
+    control_idx = order.index('Controls')
+    
+    for i, cohort in enumerate(order):
+        subset = df_plot[df_plot['cohort'] == cohort]
+        ## print the median and the Q1 and Q3
+        median = subset['pred'].median()
+        q1 = subset['pred'].quantile(0.25)
+        q3 = subset['pred'].quantile(0.75)
+        print(f'{cohort}: Median={median:.2f}, IQR: [{q1:.2f}-{q3:.2f}]')
+        n = subset.shape[0]
+        ax.text(i, median + 0.01, f'N={n}', ha='center', va='bottom', fontsize=font_size)
+    
+    # Add significance brackets comparing each group to Controls
+    bracket_offset = 0
+    for i, cohort in enumerate(order):
+        if cohort == 'Controls':
+            continue  # Skip Controls itself
+        
+        cohort_values = df_plot[df_plot['cohort'] == cohort]['pred'].values
+        
+        if len(cohort_values) > 0 and len(control_values) > 0:
+            # Perform t-test
+            ttest = ttest_ind(cohort_values, control_values)
+            pval = ttest.pvalue
+            sig_stars = get_significance_stars(pval)
+            
+            # Get max y-value from both boxes to position bracket above
+            max_y_control = control_values.max() if len(control_values) > 0 else 0
+            max_y_cohort = cohort_values.max() if len(cohort_values) > 0 else 0
+            max_y = max(max_y_control, max_y_cohort)
+            
+            # Position bracket slightly above the boxes with vertical spacing to avoid overlap
+            bracket_y = max_y + 0.05 + (bracket_offset * 0.015)
+            bracket_offset += 1
+            
+            # Draw bracket between Controls position and current cohort position
+            x1 = box_positions[control_idx]  # Controls position
+            x2 = box_positions[i]  # Cohort position
+            x_center = (x1 + x2) / 2
+            
+            # Draw horizontal line
+            ax.plot([x1, x2], [bracket_y, bracket_y], 'k-', linewidth=1)
+            # Draw vertical lines at ends
+            ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            # Add significance stars
+            ax.text(x2, bracket_y - 0.05, sig_stars, ha='center', va='bottom', fontsize=font_size)
+    
+    # Adjust y-axis limits to accommodate brackets
+    ax.set_ylim(0, 1.1)
+    
+    if save:
+        plt.tight_layout()
+        plt.savefig('supplemental_figures/cotherapy_analysis_overall_v2.png', dpi=300, bbox_inches='tight')
+    return ax
+
+
+if __name__ == '__main__':
+    generate_cotherapy_analysis_figure(save=True)

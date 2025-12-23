@@ -156,7 +156,8 @@ def create_patient_trajectory_plot(cohorts, titles, save_path):
         #   verticalalignment='top', horizontalalignment='left')
         # Customize subplot
         ax.set_ylim(0, 1)
-        ax.set_ylabel('Model Score', fontsize=FONT_SIZE)
+        ax.set_ylabel('Model Score', fontsize=FONT_SIZE-2)
+        ax.set_xlabel('Time (Month)', fontsize=FONT_SIZE-2)
         ax.set_title(title, fontsize=FONT_SIZE, pad=10)
         
         # Format x-axis with monthly ticks
@@ -172,12 +173,12 @@ def create_patient_trajectory_plot(cohorts, titles, save_path):
     
     # Add overall figure labels
     # fig.supxlabel('Date (Point=Night, Tick=Month)', y=0.05, fontsize=12)
-    fig.supxlabel('Time (Month)', y=0.05, fontsize=FONT_SIZE)
+    # fig.supxlabel('Time (Month)', y=0.05, fontsize=FONT_SIZE)
     # fig.supylabel('Model Score', x=0.09, fontsize=12)
     
     # Adjust layout and save
     plt.tight_layout()
-    plt.subplots_adjust(hspace=0.3, wspace=0.22)
+    plt.subplots_adjust(hspace=0.35, wspace=0.22)
     
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     

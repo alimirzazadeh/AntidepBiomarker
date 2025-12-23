@@ -1,571 +1,411 @@
 """
-Baseline Random Forest Analysis for Sleep Study Antidepressant Prediction
+Analysis of Model Predictions Across Different Medication Types
+==============================================================
 
-This script performs cross-validation analysis using Random Forest classifiers on:
-1. Sleep stage features (baseline model)
-2. EEG features (baseline model)
-3. Our proposed model (pre-computed predictions)
+This script analyzes model predictions for various medication types including
+benzodiazepines, antipsychotics, anticonvulsants, hypnotics, and antidepressants
+using data from MROS and WSC datasets.
 
-The analysis includes bootstrap confidence intervals and per-dataset performance evaluation.
+Author: [Author Name]
+Date: [Date]
 """
 
-import pandas as pd
-import numpy as np
-import os
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import train_test_split
-from sklearn.inspection import permutation_importance
-from tqdm import tqdm
+"""
+Anticholinergics: 
+- Antihistamines (first-generation, strong anticholinergic effects):
+Diphenhydramine — Benadryl
+Chlorpheniramine — Chlor-Trimeton
+Hydroxyzine — Vistaril, Atarax
+Clemastine — Tavist
+Meclizine — Antivert, Bonine
+Promethazine — Phenergan
+
+- Non-antihistamines:
+Benztropine — Cogentin
+Trihexyphenidyl — (no widely known U.S. brand; formerly Artane)
+Oxybutynin — Ditropan
+Tolterodine — Detrol
+Solifenacin — Vesicare
+Dicyclomine — Bentyl
+Hyoscyamine — Levsin, Anaspaz
+Scopolamine — Transderm Scop
+
+"""
+
+import pandas as pd 
+import numpy as np 
+import os 
+import matplotlib.pyplot as plt
+import seaborn as sns 
+from scipy.__config__ import show
 from ipdb import set_trace as bp
+import scipy 
+# Configuration
+EXP_FOLDER = 'data/'
+font_size = 12
 
-CSV_DIR = '../../data/'
-def load_and_prepare_data():
-    """
-    Load and prepare all datasets for analysis.
-    
-    Returns:
-    --------
-    tuple : (df, df_eeg, labels_model_baseline, model1_cols, model2_cols)
-    """
-    # Load datasets
-    df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
-    df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
-    # labels = pd.read_csv(os.path.join(CSV_DIR,'rebuttal_nohchsrf_inference_v6emb_3920_all.csv'))
-    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
-    df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
-    
-    # Prepare sleep stage features dataset
-    df = df.drop(columns=['dataset'])
-    model1_cols = [col for col in df.columns if col not in ['filename', 'fold', 'dataset', 'label']]
-    
-    # Prepare EEG features dataset
-    df_eeg = df_eeg.merge(df, on='filename', how='inner')
-    df_eeg = df_eeg.drop(columns=['dataset'])
-    model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
-    
-    # Process our model predictions
-    labels['filename'] = labels['filename'].apply(lambda x: x.split('/')[-1])
-    labels = labels.groupby('filename', as_index=False).agg(
-        lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
-    )
-    
-    # Clean participant IDs across datasets
-    for dataset in ['wsc', 'mros', 'shhs']:
-        mask = labels['dataset'] == dataset
-        labels.loc[mask, 'pid'] = labels.loc[mask, 'pid'].apply(lambda x: x[1:] if isinstance(x, str) and x else x)
-    
-    # Merge with taxonomy data
-    labels_model_baseline = pd.merge(labels, df_taxonomy, on='filename', how='inner')
-    labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
-        'pred': 'mean', 
-        'dataset': 'first', 
-        'label': 'first', 
-        'fold': 'first'
-    }).reset_index()
-    
-    # Convert logits to probabilities
-    labels_model_baseline['prob'] = 1 / (1 + np.exp(-labels_model_baseline['pred']))
-    
-    # Merge labels with feature datasets
-    labels_subset = labels[['filename', 'label', 'fold', 'dataset', 'mit_gender', 'mit_age']]
-    df = df.merge(labels_subset, on='filename', how='inner')
-    df_eeg = df_eeg.merge(labels_subset, on='filename', how='inner')
-    
-    return df, df_eeg, labels_model_baseline, model1_cols, model2_cols
+def calculate_pval_effect_size(x,y,equal_var=False):
+    t,p=scipy.stats.ttest_ind(x,y,equal_var=equal_var)
+    nx,ny=len(x),len(y)
+    md=np.mean(x)-np.mean(y)
+    if equal_var:
+        sp=np.sqrt(((nx-1)*np.var(x,ddof=1)+(ny-1)*np.var(y,ddof=1))/(nx+ny-2))
+    else:
+        sp=np.sqrt((np.var(x,ddof=1)+np.var(y,ddof=1))/2)
+    return p,md/sp
+def get_significance_stars(pval):
+    if pval < .001: #1e-10:
+        return '***'
+    elif pval < 0.01: #0.001:
+        return '**'
+    elif pval < 0.05:
+        return '*'
+    else:
+        return 'ns'
 
+# Function to get effect size crosses
+def get_effect_size_crosses(effect_size):
+    abs_es = abs(effect_size)
+    if abs_es > 0.5:
+        return '†††'
+    elif abs_es > 0.3:
+        return '††'
+    elif abs_es > 0.1:
+        return '†'
+    else:
+        return 'ne'
 
-def bootstrap_auroc_ci(y_true, y_prob, n_bootstrap=1000, ci=0.95, random_state=42):
-    """
-    Calculate bootstrap confidence intervals for AUROC.
+def load_and_preprocess_data():
+    """Load and preprocess the main inference data."""
+    # Load main inference data
+    df = pd.read_csv(os.path.join(EXP_FOLDER, 'inference_v6emb_3920_all.csv'))
+    # Filter to only include MROS and WSC datasets
+    df = df[df['dataset'].isin(['mros', 'wsc','rf'])].copy() 
+    # Apply sigmoid transformation to predictions
+    df['pred'] = 1 / (1 + np.exp(-df['pred'])) 
     
-    Parameters:
-    -----------
-    y_true : array-like
-        True binary labels
-    y_prob : array-like
-        Predicted probabilities for positive class
-    n_bootstrap : int
-        Number of bootstrap samples
-    ci : float
-        Confidence interval (default 0.95 for 95% CI)
-    random_state : int
-        Random seed for reproducibility
-        
-    Returns:
-    --------
-    tuple : (mean_auroc, lower_ci, upper_ci)
-    """
-    rng = np.random.RandomState(random_state)
-    bootstrapped_scores = []
+    # Extract filename and clean patient IDs
+    df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
+    df['pid'] = df.apply(lambda x: x['pid'] if x['dataset'] != 'wsc' else x['pid'][1:], axis=1)
+    df['pid'] = df.apply(lambda x: x['pid'] if x['dataset'] != 'mros' else x['pid'][1:], axis=1)
     
-    y_true = np.array(y_true)
-    y_prob = np.array(y_prob)
+    # Aggregate by filename (take mean for numeric, first value for non-numeric)
+    df = df.groupby('filename').agg(lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0])
     
-    for _ in tqdm(range(n_bootstrap), desc="Bootstrap sampling"):
-        # Sample with replacement
-        indices = rng.choice(np.arange(len(y_true)), size=len(y_true), replace=True)
-        
-        # Skip if not both classes present in sample
-        if len(np.unique(y_true[indices])) < 2:
-            continue
-            
-        score = roc_auc_score(y_true[indices], y_prob[indices])
-        bootstrapped_scores.append(score)
-    
-    # Calculate confidence intervals
-    sorted_scores = np.sort(bootstrapped_scores)
-    lower_idx = int((1.0 - ci) / 2.0 * len(sorted_scores))
-    upper_idx = int((1.0 + ci) / 2.0 * len(sorted_scores))
-    lower = sorted_scores[lower_idx]
-    upper = sorted_scores[upper_idx]
-    mean = np.mean(bootstrapped_scores)
-    
-    print(f"AUROC: {mean:.4f} (95% CI: {lower:.4f} - {upper:.4f})")
-    return mean, lower, upper
 
+    return df
 
-def run_rf_auroc_pruned(train_set, train_y, test_set, test_y, cols=None):
-    """
-    Train Random Forest with feature pruning based on permutation importance.
-    
-    Parameters:
-    -----------
-    train_set : array-like
-        Training features
-    train_y : array-like
-        Training labels
-    test_set : array-like
-        Test features
-    test_y : array-like
-        Test labels
-    cols : list, optional
-        Column names for feature importance reporting
-        
-    Returns:
-    --------
-    array : Predicted probabilities for test set
-    """
-    # Clean NaNs and infs
-    train_set = np.nan_to_num(train_set, nan=0.0, posinf=0.0, neginf=0.0)
-    test_set = np.nan_to_num(test_set, nan=0.0, posinf=0.0, neginf=0.0)
-    
-    # Train original model on all features
-    original_model = RandomForestClassifier(
-        n_estimators=1000,
-        bootstrap=True,
-        class_weight={0: 1, 1: 2},
-        random_state=42,
-        max_depth=10
-    )
-    original_model.fit(train_set, train_y)
-    y_prob_orig = original_model.predict_proba(test_set)[:, 1]
-    original_auroc = roc_auc_score(test_y, y_prob_orig)
-    print(f"Original Test AUROC (all features): {original_auroc:.4f}")
-    
-    # Split training data for pruning validation
-    train_sub, val_sub, y_sub, y_val = train_test_split(
-        train_set, train_y, test_size=0.2, stratify=train_y, random_state=42
-    )
-    
-    # Train base model for permutation importance
-    base_model = RandomForestClassifier(
-        n_estimators=500,
-        bootstrap=True,
-        class_weight={0: 1, 1: 2},
-        random_state=42,
-        max_depth=10
-    )
-    base_model.fit(train_sub, y_sub)
-    
-    # Calculate permutation importance on validation set
-    result = permutation_importance(
-        base_model, val_sub, y_val, 
-        n_repeats=5, scoring='roc_auc', random_state=42
-    )
-    importances = result.importances_mean
-    
-    # Select important features
-    threshold = 0.0005
-    important_indices = np.where(importances > threshold)[0]
-    num_dropped = train_set.shape[1] - len(important_indices)
-    
-    if len(important_indices) == 0:
-        print("⚠️ No important features found above threshold; using all features.")
-        important_indices = np.arange(train_set.shape[1])
-        num_dropped = 0
-    
-    print(f"Dropped {num_dropped} feature(s) below importance threshold {threshold}")
-    
-    # Filter feature sets
-    train_reduced = train_set[:, important_indices]
-    test_reduced = test_set[:, important_indices]
-    selected_cols = [cols[i] for i in important_indices] if cols is not None else None
-    
-    # Retrain final model on reduced features
-    model = RandomForestClassifier(
-        n_estimators=1000,
-        bootstrap=True,
-        class_weight={0: 1, 1: 2},
-        random_state=42,
-        max_depth=10
-    )
-    model.fit(train_reduced, train_y)
-    
-    # Print top feature importances
-    # if selected_cols is not None:
-    #     feature_importances = model.feature_importances_
-    #     sorted_indices = np.argsort(feature_importances)[::-1]
-    #     print("Retained Feature importances:")
-    #     for idx in sorted_indices[:10]:
-    #         print(f"{selected_cols[idx]}: {feature_importances[idx]:.4f}")
-    
-    # Calculate predictions and AUROC
-    y_prob = model.predict_proba(test_reduced)[:, 1]
-    train_y_prob = model.predict_proba(train_reduced)[:, 1]
-    auroc = roc_auc_score(test_y, y_prob)
-    train_auroc = roc_auc_score(train_y, train_y_prob)
-    
-    print(f"\nNew Test AUROC (pruned): {auroc:.4f}", f"Train AUROC (pruned): {train_auroc:.4f} \n")
-    
-    return y_prob
+def process_mit_medications(EXP_FOLDER = 'data/'):
+    """Add taxonomy information to the dataframe."""
+    df_taxonomy = pd.read_csv(os.path.join(EXP_FOLDER,'master_dataset.csv'))
+    df_taxonomy = df_taxonomy[df_taxonomy['dataset'] == 'rf'].copy()
+    df_taxonomy = df_taxonomy[['filename', 'taxonomy','date','pid']]
 
+    df_taxonomy['date'] = pd.to_datetime(df_taxonomy['date'])
+    df_rf = pd.read_csv(os.path.join(EXP_FOLDER, 'mit_psychotropics.csv'))
+    df_rf.rename(columns={'Unnamed: 0': 'pid'}, inplace=True)
+    def get_benzos(pid, date):
+        if pid in ['NIHYA889LELYV','NIHFW795KLATW']:
+            return True if (pid == 'NIHYA889LELYV' and date < pd.to_datetime('2019-09-15')) or (pid == 'NIHFW795KLATW' and date > pd.to_datetime('2021-01-01')) else False
+        else:
+            if  pid not in df_rf['pid'].values:
+                return False
+            else:
+                return df_rf[df_rf['pid'] == pid]['Benzodiazepines'].item()
+    def get_antipsycho(pid, date):
+        # print(type(pid), type(df_rf['pid'].values))
+        if  pid not in df_rf['pid'].values:
+                return False
+        else:
+                return df_rf[df_rf['pid'] == pid]['Antipsychotics'].item()
+    def get_anticonvuls(pid, date):
+        if pid in ['NIHKH638RXUVN']:
+            return True if (pid == 'NIHKH638RXUVN' and date < pd.to_datetime('2021-03-20')) and (date > pd.to_datetime('2021-02-20')) else False
+        else:
+            if  pid not in df_rf['pid'].values:
+                return False
+            else:
+                return df_rf[df_rf['pid'] == pid]['Anticonvulsants'].item()
+    def get_hypnotics(pid, date):
+            if  pid not in df_rf['pid'].values:
+                return False
+            else:
+                return df_rf[df_rf['pid'] == pid]['Hypnotics'].item()
+    def get_anticholinergics(pid, date):
+        if pid in ['NIHPX213JXJZC','NIHYA889LELYV']:
+            return True if (pid == 'NIHPX213JXJZC' and date > pd.to_datetime('2020-07-14')) or (pid == 'NIHYA889LELYV' and date < pd.to_datetime('2020-10-01')) else False
+        else:
+            if  pid not in df_rf['pid'].values:
+                return False
+            else:
+                return df_rf[df_rf['pid'] == pid]['Anticholinergics'].item()
+    def get_stimulants(pid, date):
+        if  pid not in df_rf['pid'].values:
+                return False
+        else:
+                return df_rf[df_rf['pid'] == pid]['Stimulants'].item()
+    df_taxonomy['pid'] = df_taxonomy['pid'].astype(str)
+    df_taxonomy['benzos'] = df_taxonomy.apply(lambda x: get_benzos(x['pid'],x['date']), axis=1)
+    df_taxonomy['antipsycho'] = df_taxonomy.apply(lambda x: get_antipsycho(x['pid'],x['date']), axis=1)
+    df_taxonomy['convuls'] = df_taxonomy.apply(lambda x: get_anticonvuls(x['pid'],x['date']), axis=1)
+    df_taxonomy['hypnotics'] = df_taxonomy.apply(lambda x: get_hypnotics(x['pid'],x['date']), axis=1)
+    df_taxonomy['anticholinergics'] = df_taxonomy.apply(lambda x: get_anticholinergics(x['pid'],x['date']), axis=1)
+    df_taxonomy['stimulants'] = df_taxonomy.apply(lambda x: get_stimulants(x['pid'],x['date']), axis=1)
+    print('Stimulants: ', df_taxonomy[df_taxonomy['stimulants'] == True]['pid'].unique())
+    print('Anticholinergics: ', df_taxonomy[df_taxonomy['anticholinergics'] == True]['pid'].unique())
+    print('Hypnotics: ', df_taxonomy[df_taxonomy['hypnotics'] == True]['pid'].unique())
+    print('Convuls: ', df_taxonomy[df_taxonomy['convuls'] == True]['pid'].unique())
+    print('Antipsycho: ', df_taxonomy[df_taxonomy['antipsycho'] == True]['pid'].unique())
+    print('Benzos: ', df_taxonomy[df_taxonomy['benzos'] == True]['pid'].unique())
+    return df_taxonomy[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants']]
+    
 
-def run_rf_auroc(train_set, train_y, test_set, test_y, cols=None):
-    """
-    Train Random Forest classifier and evaluate performance.
-    
-    Parameters:
-    -----------
-    train_set : array-like
-        Training features
-    train_y : array-like
-        Training labels
-    test_set : array-like
-        Test features
-    test_y : array-like
-        Test labels
-    cols : list, optional
-        Column names for feature importance reporting
-        
-    Returns:
-    --------
-    array : Predicted probabilities for test set
-    """
-    # Clean NaNs and infs
-    train_set = np.nan_to_num(train_set, nan=0.0, posinf=0.0, neginf=0.0)
-    test_set = np.nan_to_num(test_set, nan=0.0, posinf=0.0, neginf=0.0)
-    
-    # Configure and train Random Forest
-    model = RandomForestClassifier(
-        n_estimators=1000,
-        bootstrap=True,
-        class_weight={0: 1, 1: 2},  # Handle class imbalance
-        random_state=42,
-        max_depth=10
-    )
-    model.fit(train_set, train_y)
-    
-    # Print top feature importances
-    # if cols is not None:
-    #     feature_importances = model.feature_importances_
-    #     sorted_indices = np.argsort(feature_importances)[::-1]
-    #     print("Feature importances:")
-    #     for idx in sorted_indices[:10]:
-    #         print(f"{cols[idx]}: {feature_importances[idx]:.4f}")
-    
-    # Get predicted probabilities
-    y_prob = model.predict_proba(test_set)[:, 1]
-    train_y_prob = model.predict_proba(train_set)[:, 1]
-    
-    # Compute AUROC for both test and training sets
-    auroc = roc_auc_score(test_y, y_prob)
-    train_auroc = roc_auc_score(train_y, train_y_prob)
-    
-    print(f"\n Test AUROC: {auroc:.4f}", f"Train AUROC: {train_auroc:.4f} \n")
-    
-    return y_prob
+def add_taxonomy_data(df):
+    """Add taxonomy information to the dataframe."""
+    df_taxonomy = pd.read_csv(os.path.join(EXP_FOLDER,'antidep_taxonomy_all_datasets_v6.csv'))
+    df_taxonomy = df_taxonomy[['filename', 'taxonomy']]
+    df = pd.merge(df, df_taxonomy, on='filename', how='inner')
+    return df
 
-
-
-
-
-def run_cross_validation(df, df_eeg, model1_cols, model2_cols):
-    """
-    Perform 4-fold cross-validation for both baseline models.
+def process_mros_medications(EXP_FOLDER = 'data/'):
+    """Process MROS medication data and create medication flags."""
+    # Load MROS medication data
+    df_mros_meds = pd.read_csv(os.path.join(EXP_FOLDER,'mros2-dataset-augmented-live.csv'))
+    df_mros1_meds = pd.read_csv(os.path.join(EXP_FOLDER,'mros1-dataset-augmented-live.csv'))
+    df_mros_meds = pd.concat([df_mros_meds, df_mros1_meds])
     
-    Parameters:
-    -----------
-    df : DataFrame
-        Sleep stage features dataset
-    df_eeg : DataFrame
-        EEG features dataset
-    model1_cols : list
-        Column names for sleep stage features
-    model2_cols : list
-        Column names for EEG features
-        
-    Returns:
-    --------
-    tuple : (result_sleep_stage, result_eeg)
-    """
-    result_sleep_stage = pd.DataFrame()
-    result_eeg = pd.DataFrame()
+    # Define medication categories with their corresponding variable names
+    medication_categories = {
+        'benzos': ['M1ALPRAZ', 'M1DIAZEP', 'M1LORAZE', 'M1CLONAZ', 'M1TEMAZE', 'M1MIDAZO'],
+        'antipsycho': ['M1HALOPE', 'M1CHLORM', 'M1RISPER', 'M1OLANZA', 'M1QUETIA', 'M1ARIPIP', 'M1CLOZAP'],
+        'convuls': ['M1CARBAZ', 'M1LAMOTR', 'M1GABAPE', 'M1PREGAB', 'M1TOPIRA', 'M1LEVETI'],
+        'hypnotics': ['M1ZOLPID', 'M1ESZOPI', 'M1ZALEPL', 'M1RAMELT'],
+        'stimulants': ['M1METHPH', 'M1AMPHET', 'M1MODAFI'],
+        'anticholinergics': ['M1DIPHHY','M1CHLORR','M1HYDROY','M1CLEMAS','M1MECLIZ','M1PROMET','M1BENZTR','M1TRIHEX','M1OXYBUT','M1TOLTER','M1SOLIFE','M1DICYCL','M1HYOSCY','M1SCOPOL',]
+    }
     
-    print(f"Dataset shape: {df.shape}")
-    
-    for fold in range(4):
-        print(f'\n=== Fold {fold} ===')
-        
-        # Split data: train on folds != current_fold and dataset != 'wsc', test on current_fold + 'wsc'
-        train_mask = (df['fold'] != fold) & (df['dataset'] != 'wsc')
-        test_mask = (df['fold'] == fold) | (df['dataset'] == 'wsc')
-        
-        # Sleep stage model data
-        train_set = df[train_mask].copy()
-        test_set = df[test_mask].copy()
-        train_y = train_set['label'].values
-        test_y = test_set['label'].values
-        
-        # EEG model data
-        train_set_eeg = df_eeg[train_mask].copy()
-        test_set_eeg = df_eeg[test_mask].copy()
-        
-        # Store metadata
-        test_set_datasets = test_set['dataset'].values
-        test_set_labels = test_set['label'].values
-        
-        # Prepare feature matrices
-        train_features = train_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
-        test_features = test_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
-        
-        train_features_eeg = train_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
-        test_features_eeg = test_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
-        
-        # Train and evaluate sleep stage model
-        print('Sleep Stage Model:')
-        probs_sleep = run_rf_auroc(train_features, train_y, test_features, test_y, cols=model1_cols)
-        bootstrap_auroc_ci(test_y, probs_sleep)
-        
-        # Store results
-        fold_result_sleep = pd.DataFrame({
-            'prob': probs_sleep,
-            'label': test_set_labels,
-            'dataset': test_set_datasets,
-            'fold': fold
-        })
-        result_sleep_stage = pd.concat([result_sleep_stage, fold_result_sleep], ignore_index=True)
-        
-        # Train and evaluate EEG model
-        print('EEG Model:')
-        probs_eeg = run_rf_auroc(train_features_eeg, train_y, test_features_eeg, test_y, cols=model2_cols)
-        bootstrap_auroc_ci(test_y, probs_eeg)
-        
-        # Store results
-        fold_result_eeg = pd.DataFrame({
-            'prob': probs_eeg,
-            'label': test_set_labels,
-            'dataset': test_set_datasets,
-            'fold': fold
-        })
-        result_eeg = pd.concat([result_eeg, fold_result_eeg], ignore_index=True)
-    
-    return result_sleep_stage, result_eeg
-
-
-def evaluate_per_dataset_performance(result_sleep, result_eeg, labels_model_baseline):
-    """
-    Evaluate and print per-dataset performance for all models.
-    
-    Parameters:
-    -----------
-    result_sleep : DataFrame
-        Sleep stage model results
-    result_eeg : DataFrame
-        EEG model results
-    labels_model_baseline : DataFrame
-        Our model results
-    """
-    print('\n' + '='*50)
-    print('PER-DATASET PERFORMANCE EVALUATION')
-    print('='*50)
-    
-    for dataset in result_sleep['dataset'].unique():
-        print(f'\n--- {dataset.upper()} Dataset ---')
-        
-        # Sleep Stage Model
-        print(f'{dataset} Sleep Stage Model:')
-        dataset_mask = result_sleep['dataset'] == dataset
-        auroc = roc_auc_score(
-            result_sleep[dataset_mask]['label'], 
-            result_sleep[dataset_mask]['prob']
-        )
-        bootstrap_auroc_ci(
-            result_sleep[dataset_mask]['label'], 
-            result_sleep[dataset_mask]['prob']
-        )
-        
-        # Per-fold AUROC
-        fold_aurocs = []
-        for fold in range(4):
-            fold_mask = dataset_mask & (result_sleep['fold'] == fold)
-            if fold_mask.sum() > 0:
-                fold_aurocs.append(roc_auc_score(
-                    result_sleep[fold_mask]['label'], 
-                    result_sleep[fold_mask]['prob']
-                ))
-        
-        print(f'AUROC: {auroc:.4f}')
-        print(f'Fold AUROC: {fold_aurocs}')
-        
-        # EEG Model
-        print(f'\n{dataset} EEG Model:')
-        dataset_mask_eeg = result_eeg['dataset'] == dataset
-        auroc_eeg = roc_auc_score(
-            result_eeg[dataset_mask_eeg]['label'], 
-            result_eeg[dataset_mask_eeg]['prob']
-        )
-        bootstrap_auroc_ci(
-            result_eeg[dataset_mask_eeg]['label'], 
-            result_eeg[dataset_mask_eeg]['prob']
-        )
-        
-        # Per-fold AUROC for EEG
-        fold_aurocs_eeg = []
-        for fold in range(4):
-            fold_mask_eeg = dataset_mask_eeg & (result_eeg['fold'] == fold)
-            if fold_mask_eeg.sum() > 0:
-                fold_aurocs_eeg.append(roc_auc_score(
-                    result_eeg[fold_mask_eeg]['label'], 
-                    result_eeg[fold_mask_eeg]['prob']
-                ))
-        
-        print(f'AUROC: {auroc_eeg:.4f}')
-        print(f'Fold AUROC: {fold_aurocs_eeg}')
-        
-        # Our Model
-        print(f'\n{dataset} Our Model:')
-        dataset_mask_our = labels_model_baseline['dataset'] == dataset
-        if dataset_mask_our.sum() > 0:
-            auroc_our = roc_auc_score(
-                labels_model_baseline[dataset_mask_our]['label'], 
-                labels_model_baseline[dataset_mask_our]['prob']
+    # Create binary flags for each medication category
+    for category, medications in medication_categories.items():
+        if True: #category != 'stimulants':  # Skip stimulants as they're not used in the final analysis
+            df_mros_meds[category.replace('convuls', 'convuls')] = df_mros_meds.apply(
+                lambda x: any([x[med] == True for med in medications if med in df_mros_meds.columns]), 
+                axis=1
             )
-            bootstrap_auroc_ci(
-                labels_model_baseline[dataset_mask_our]['label'], 
-                labels_model_baseline[dataset_mask_our]['prob']
-            )
-            
-            # Per-fold AUROC for Our Model (skip WSC as it doesn't have folds)
-            fold_aurocs_our = []
-            if dataset != 'wsc':
-                for fold in range(4):
-                    fold_mask_our = dataset_mask_our & (labels_model_baseline['fold'] == fold)
-                    if fold_mask_our.sum() > 0:
-                        fold_aurocs_our.append(roc_auc_score(
-                            labels_model_baseline[fold_mask_our]['label'], 
-                            labels_model_baseline[fold_mask_our]['prob']
-                        ))
-            
-            print(f'AUROC: {auroc_our:.4f}')
-            print(f'Fold AUROC: {fold_aurocs_our}')
+    
+    return df_mros_meds[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics','stimulants']]
+
+def process_wsc_medications(EXP_FOLDER = 'data/'):
+    """Process WSC medication data and create medication flags."""
+    df_wsc_meds = pd.read_csv(os.path.join(EXP_FOLDER,'wsc-dataset-0.7.0.csv'))
+    
+    # Define medication categories with their corresponding WSC variable names
+    medication_categories = {
+        'benzos': ['dr412', 'dr420', 'dr421', 'dr431', 'dr863', 'dr440'],
+        'antipsycho': ['dr423', 'dr429', 'dr430'],
+        'convuls': ['dr418', 'dr404', 'dr443', 'dr433'],
+        'hypnotics': ['dr858'],
+        'stimulants': ['dr706', 'dr776', 'dr861', 'dr842', 'dr859'],
+        'anticholinergics': ['dr219','dr221','dr235','dr239','dr207','dr229','dr783','dr854','dr759','dr717','dr256']
+    }
+    
+    # Create filename for WSC data
+    df_wsc_meds['filename'] = df_wsc_meds.apply(
+        lambda x: f'wsc-visit{x["wsc_vst"]}-{x["wsc_id"]}-nsrr.npz', 
+        axis=1
+    )
+    
+    # Create binary flags for each medication category
+    for category, medications in medication_categories.items():
+        # if category != 'stimulants':  # Skip stimulants as they're not used in the final analysis
+        df_wsc_meds[category.replace('convuls', 'convuls')] = df_wsc_meds.apply(
+            lambda x: any([x[med] == True for med in medications if med in df_wsc_meds.columns]), 
+            axis=1
+        )
+    
+    return df_wsc_meds[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants']]
+
+def extract_medication_groups(df):
+    """Extract prediction values for different medication groups."""
+    # Define medication groups
+    groups = {}
+    
+    # Controls: no antidepressants and no other medications
+    groups['controls'] = df[
+        (df['label'] == 0) & 
+        (df['benzos'] == False) & 
+        (df['antipsycho'] == False) & 
+        (df['convuls'] == False) & 
+        (df['hypnotics'] == False) & 
+        (df['anticholinergics'] == False)
+    ]['pred'].values
+    
+    # Specific medication groups (non-antidepressant users)
+    groups['benzos'] = df[(df['label'] == 0) & (df['benzos'] == True)]['pred'].values
+    groups['antipsycho'] = df[(df['label'] == 0) & (df['antipsycho'] == True)]['pred'].values
+    groups['convuls'] = df[(df['label'] == 0) & (df['convuls'] == True)]['pred'].values
+    groups['hypnotics'] = df[(df['label'] == 0) & (df['hypnotics'] == True)]['pred'].values
+    groups['anticholinergics'] = df[(df['label'] == 0) & (df['anticholinergics'] == True)]['pred'].values
+    # Antidepressant users without other medications
+    # groups['antidep'] = df[
+    #     (df['label'] == 1) & 
+    #     (df['benzos'] == False) & 
+    #     (df['antipsycho'] == False) & 
+    #     (df['convuls'] == False) & 
+    #     (df['hypnotics'] == False) & 
+    #     (df['anticholinergics'] == False)
+    # ]['pred'].values
+    # All Antidepressant users 
+    groups['antidep'] = df[(df['label'] == 1)]['pred'].values
+    
+    return groups
+
+def create_visualization(groups, save_path=None, ax=None, save=True):
+    """Create and save the medication comparison visualization."""
+    # Print group sizes
+    print('Group sizes:')
+    for group_name, values in groups.items():
+        print(f'  {group_name.capitalize()}: {len(values)}')
+    
+    # Prepare data for visualization
+    df_viz = pd.DataFrame({
+        'medication': (
+            ['No Psycho\ntropic'] * len(groups['controls']) +
+            ['Benzo-\ndiazepines'] * len(groups['benzos']) +
+            ['Anti-\npsychotics'] * len(groups['antipsycho']) +
+            ['Anti-\nconvulsants'] * len(groups['convuls']) +
+            ['Hypnotics'] * len(groups['hypnotics']) +
+            ['Anti-\ncholinergics'] * len(groups['anticholinergics']) +
+            ['Anti-\ndepressants'] * len(groups['antidep'])
+        ),
+        'pred': np.concatenate([
+            groups['controls'], groups['benzos'], groups['antipsycho'], 
+            groups['convuls'], groups['hypnotics'], groups['anticholinergics'], groups['antidep']
+        ])
+    })
+    
+    # Create figure
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7, 4))
+    
+    # Define order for consistent presentation
+    order = ['No Psycho\ntropic', 'Anti-\ncholinergics', 'Hypnotics', 'Anti-\nconvulsants', 'Benzo-\ndiazepines',
+             'Anti-\npsychotics', 'Anti-\ndepressants']
+    
+    # Create boxplot
+    sns.boxplot(
+        x="medication", y="pred", data=df_viz, 
+        palette='Greens', ax=ax, order=order, showfliers=False
+    )
+    ax.tick_params(axis='x', labelsize=font_size-1)
+    ax.tick_params(axis='y', labelsize=font_size)
+    
+    
+
+    ### Add significances - compare each medication to Antidepressants
+    # Get Antidepressants values (last column)
+    antidep_values = df_viz[df_viz['medication'] == 'Anti-\ndepressants']['pred'].values
+    box_positions = ax.get_xticks()
+    
+    # Find the index of Antidepressants in the order
+    antidep_idx = order.index('Anti-\ndepressants')
+    
+    # Compare each medication (except Antidepressants) to Antidepressants
+    bracket_offset = 0  # Track vertical offset for each bracket to avoid overlap
+    for i, medication in enumerate(order):
+        if medication == 'Anti-\ndepressants':
+            continue  # Skip Antidepressants itself
         
-        print()
-    
-    # Additional datasets for our model only
-    for dataset in ['hchs', 'rf']:
-        if dataset in labels_model_baseline['dataset'].values:
-            print(f'{dataset} Our Model:')
-            dataset_mask = labels_model_baseline['dataset'] == dataset
-            auroc = roc_auc_score(
-                labels_model_baseline[dataset_mask]['label'], 
-                labels_model_baseline[dataset_mask]['prob']
-            )
-            bootstrap_auroc_ci(
-                labels_model_baseline[dataset_mask]['label'], 
-                labels_model_baseline[dataset_mask]['prob']
-            )
+        medication_values = df_viz[df_viz['medication'] == medication]['pred'].values
+        
+        if len(medication_values) > 0 and len(antidep_values) > 0:
+            # Calculate p-value and effect size
+            pval, effect_size = calculate_pval_effect_size(medication_values, antidep_values)
+            sig_stars = get_significance_stars(pval)
+            crosses = get_effect_size_crosses(effect_size)
             
-            # Per-fold AUROC
-            fold_aurocs = []
-            for fold in range(4):
-                fold_mask = dataset_mask & (labels_model_baseline['fold'] == fold)
-                if fold_mask.sum() > 0:
-                    fold_aurocs.append(roc_auc_score(
-                        labels_model_baseline[fold_mask]['label'], 
-                        labels_model_baseline[fold_mask]['prob']
-                    ))
+            # Get max y-value from both boxes to position bracket above
+            max_y_antidep = antidep_values.max() if len(antidep_values) > 0 else 0
+            max_y_medication = medication_values.max() if len(medication_values) > 0 else 0
+            max_y = max(max_y_antidep, max_y_medication) + 0.08
             
-            print(f'AUROC: {auroc:.4f}')
-            print(f'Fold AUROC: {fold_aurocs}')
-            print()
+            # Position bracket slightly above the boxes with vertical spacing to avoid overlap
+            bracket_y = max_y + 0.05 + (bracket_offset * 0.02)  # 0.02 spacing between brackets
+            bracket_offset -= 1
+            
+            # Draw bracket between Antidepressants position and current medication position
+            x1 = box_positions[antidep_idx]  # Antidepressants position
+            x2 = box_positions[i]  # Medication position
+            x_center = (x1 + x2) / 2
+            
+            # Draw horizontal line
+            ax.plot([x1, x2], [bracket_y, bracket_y], 'k-', linewidth=1)
+            # Draw vertical lines at ends
+            ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
+            # Add significance stars
+            ax.text(x2, bracket_y - 0.01 - 0.06, sig_stars, ha='center', va='bottom', fontsize=font_size)
+            # Add effect size crosses right above the stars
+            # ax.text(x2, bracket_y - 0.01 - 0.05 -  0.06, crosses, ha='center', va='bottom', fontsize=font_size)
+    
+    
+    
+    
+    # Add sample size annotations
+    for i, medication in enumerate(order):
+        n = df_viz[df_viz['medication'] == medication].shape[0]
+        # ypos = np.percentile(df_viz[df_viz['medication'] == medication]['pred'], 88) + 0.03
+        ypos = df_viz[df_viz['medication'] == medication]['pred'].median() + 0.01
+        ax.text(i, ypos, f'N={n}', horizontalalignment='center', 
+                size=font_size, color='black')
+    
+    # Customize plot
+    ax.set_ylim(0, 1.1)
+    ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.set_ylabel('Model Score', fontsize=font_size)
+    ax.set_xlabel('Medication Type', fontsize=font_size)
+    if save:
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    return ax
 
+def generate_other_medications_figure(save=True, ax=None):
+    """Main analysis pipeline."""
+    print("Loading and preprocessing data...")
+    df = load_and_preprocess_data()
+    
+    print("Adding taxonomy data...")
+    df = add_taxonomy_data(df)
+    
+    print("Processing medication data...")
+    df_mros_meds = process_mros_medications()
+    df_wsc_meds = process_wsc_medications()
+    
+    print("Processing MIT medication data...")
+    df_mit_meds = process_mit_medications()
+    
+    # Combine medication data
+    df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
 
-def evaluate_overall_performance(result_sleep, result_eeg, labels_model_baseline):
-    """
-    Evaluate and print overall performance across all datasets.
+    df = df.merge(df_other, on='filename', how='inner')
+    df = df[['filename', 'taxonomy', 'pred', 'pid', 'label', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']].copy()
     
-    Parameters:
-    -----------
-    result_sleep : DataFrame
-        Sleep stage model results
-    result_eeg : DataFrame
-        EEG model results
-    labels_model_baseline : DataFrame
-        Our model results
-    """
-    print('\n' + '='*50)
-    print('OVERALL PERFORMANCE EVALUATION')
-    print('='*50)
+    df = df.groupby(['pid', 'taxonomy', 'label','benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']).agg({'pred': 'mean'}).reset_index()
+    print(df[df['dataset'] == 'mros'].shape[0])
+    print(df[df['dataset'] == 'wsc'].shape[0])
+    print(df[df['dataset'] == 'rf'].shape[0])
+    print('Total merged data: ', df.shape[0])
     
-    # Sleep Stage Model Overall
-    print('Overall Sleep Stage Model:')
-    auroc_sleep = roc_auc_score(result_sleep['label'], result_sleep['prob'])
-    print(f'AUROC: {auroc_sleep:.4f}')
-    bootstrap_auroc_ci(result_sleep['label'], result_sleep['prob'])
+    print("Extracting medication groups...")
+    groups = extract_medication_groups(df)
     
-    # EEG Model Overall
-    print('\nOverall EEG Model:')
-    auroc_eeg = roc_auc_score(result_eeg['label'], result_eeg['prob'])
-    print(f'AUROC: {auroc_eeg:.4f}')
-    bootstrap_auroc_ci(result_eeg['label'], result_eeg['prob'])
-    
-    # Our Model Overall
-    print('\nOverall Our Model:')
-    auroc_our = roc_auc_score(labels_model_baseline['label'], labels_model_baseline['prob'])
-    print(f'AUROC: {auroc_our:.4f}')
-    bootstrap_auroc_ci(labels_model_baseline['label'], labels_model_baseline['prob'])
+    print("Creating visualization...")
+    save_path = 'biomarker/analysis/figure_4d.png'
+    if save:
+        create_visualization(groups, save_path=save_path, save=True)
+    else:
+        create_visualization(groups, save_path=None, ax=ax, save=False)
 
-
-def main():
-    """
-    Main analysis pipeline.
-    """
-    print("="*60)
-    print("BASELINE RANDOM FOREST ANALYSIS")
-    print("Antidepressant Prediction from Sleep Studies")
-    print("="*60)
-    
-    # Load and prepare data
-    print("\n1. Loading and preparing datasets...")
-    df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data()
-    
-    # Run cross-validation
-    print("\n2. Running 4-fold cross-validation...")
-    result_sleep_stage, result_eeg = run_cross_validation(df, df_eeg, model1_cols, model2_cols)
-    
-    # Evaluate per-dataset performance
-    print("\n3. Evaluating per-dataset performance...")
-    evaluate_per_dataset_performance(result_sleep_stage, result_eeg, labels_model_baseline)
-    
-    # Evaluate overall performance 
-    # print("\n4. Evaluating overall performance...")
-    # evaluate_overall_performance(result_sleep_stage, result_eeg, labels_model_baseline)
-    
-    print('\n' + '='*60)
-    print('ANALYSIS COMPLETE')
-    print('='*60)
-
+    print("Analysis completed successfully!")
 
 if __name__ == "__main__":
-    main()
+    generate_other_medications_figure(save=True)

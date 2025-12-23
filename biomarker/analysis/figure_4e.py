@@ -14,9 +14,9 @@ from sklearn.metrics import roc_auc_score
 import scipy
 font_size = 13
 def get_significance_stars(pval):
-    if pval < 1e-10:
+    if pval < .001: #1e-10:
         return '***'
-    elif pval < 0.001:
+    elif pval < 0.01: #0.001:
         return '**'
     elif pval < 0.05:
         return '*'
