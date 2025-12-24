@@ -236,22 +236,9 @@ def pls_correlation(X, y):
     print("R² with PLS:", r2)
     return X_pls
 
-# fig, ax = plt.subplots(4, 2, figsize=(8, 10))
-
-## now run a tsne on the latent space 
 
 x, y, y2, y3, dataset, beta_powers, so_powers = get_x_y(-1, df, df_latency, df_powers, clip=False)
 
-# print('Control vs Antidepressant REM Latency: ', ttest_ind(y[y3==0], y[y3==1]))
-
-# table_data = {
-#     'Metric': ['Control', 'Antidep-\nressant', 'Overall'],
-#     'Pearson \n Correlation': [pearsonr(y[y3 == 0], y2[y3 == 0])[0], pearsonr(y[y3 == 1], y2[y3 == 1])[0], pearsonr(y, y2)[0]],
-#     'p-value': [pearsonr(y[y3 == 0], y2[y3 == 0])[1], pearsonr(y[y3 == 1], y2[y3 == 1])[1], pearsonr(y, y2)[1]],
-# }
-# table = pd.DataFrame(table_data)
-# table['Pearson \n Correlation'] = table['Pearson \n Correlation'].apply(lambda x: f"{x:.3f}")
-# table['p-value'] = table['p-value'].apply(lambda x: f"{x:.2e}")
 
 
 print(f"Control correlation with rem latency: {pearsonr(y[y3 == 0], y2[y3 == 0])[0]:.3f}")

@@ -29,12 +29,6 @@ def generate_osa_figure(save=True, ax=None):
     )
     df_tax = pd.read_csv(os.path.join(CSV_DIR,'anonymized_antidep_taxonomy_all_datasets_v6.csv'))
     df = pd.merge(df, df_tax, on='filename', how='inner')
-    df['is_tca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('T') or ',T' in x else 0)
-    df['is_ntca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('N') or ',N' in x else 0)
-    df['is_snri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NN') or ',NN' in x else 0)
-    df['is_ssri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NS') or ',NS' in x else 0)
-    # df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
-    df = df[(df['is_snri'] == 1) | (df['is_ssri'] == 1) | (df['is_ntca'] == 1) | (df['is_tca'] == 1) | (df['label'] == 0)]
     # Convert logits to probabilities using sigmoid
     df['pred'] = 1 / (1 + np.exp(-df['pred']))
 

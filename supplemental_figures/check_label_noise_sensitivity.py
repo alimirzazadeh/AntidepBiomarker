@@ -232,11 +232,11 @@ def main():
         prop_ratio = (1 - prop_positive) / prop_positive
         label_noise = label_noise / prop_ratio
         print(f'Label noise: {label_noise}')
-        labels_model_baseline_noisy = labels_model_baseline.copy()
-        labels_model_baseline_noisy['label'] = labels_model_baseline_noisy['label'].apply(lambda x: flip_label(x, label_noise, only_if_label_is_0=True))
+        # labels_model_baseline_noisy = labels_model_baseline.copy()
+        # labels_model_baseline_noisy['label'] = labels_model_baseline_noisy['label'].apply(lambda x: flip_label(x, label_noise, only_if_label_is_0=True))
         # Evaluate per-dataset performance
         print("\n3. Evaluating per-dataset performance...")
-        output = evaluate_per_dataset_performance(labels_model_baseline_noisy)
+        output = evaluate_per_dataset_performance(labels_model_baseline)
         print(output)
         output = pd.DataFrame(output)
         output['label_noise'] = label_noise_pre * 100
@@ -255,7 +255,7 @@ def main():
     for col in dfp.columns:
         df2p[col] = np.round(dfp[col] - og_auroc[col], 3)
 
-    df2p.iloc[0] = dfp.iloc[0].round(3)
+    # df2p.iloc[0] = dfp.iloc[0].round(3)
     df2p.index.name = 'Label Noise %'
     dfi.export(df2p, 'label_noise_sensitivity_v3.png')
     print('done')

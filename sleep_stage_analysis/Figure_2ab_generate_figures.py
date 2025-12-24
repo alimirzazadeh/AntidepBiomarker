@@ -183,7 +183,7 @@ if True:
 
 ## now get the correlation between the ground truth and predicted features 
 
-if True: 
+if __name__ == "__main__":
     # Create lists to store results
     features = []
     control_correlations = []

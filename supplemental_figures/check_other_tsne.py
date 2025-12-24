@@ -282,7 +282,7 @@ def load_tsne_model(fold):
         tsne = pickle.load(f)
     return tsne
 # fig, ax = plt.subplots(4, 2, figsize=(8, 10))
-fig2, ax2 = plt.subplots(4, 6, figsize=(24,16))
+fig2, ax2 = plt.subplots(4, 5, figsize=(20,16))
 fig3, ax3 = plt.subplots(4, 4, figsize=(16,16))
 ## now run a tsne on the latent space 
 
@@ -298,9 +298,9 @@ for fold in range(4):
     tsne_pos = TSNE(n_components=2, random_state=41, perplexity=30, init='pca')
     x_tsne_2 = tsne_pos.fit_transform(x[pos_mask])
     
-    plot_columns = {'Model Score': y2, 'REM Latency': y, 'SWS Duration': sws_duration, 'REM Duration': rem_duration, 'Sleep Efficiency': sleep_efficiency, 'Dose': dose, 'Taxonomy': taxonomy, 'Dataset': dataset, 'Age': mit_age}
+    plot_columns = {'Model Score': y2, 'REM Latency': y, 'SWS Duration': sws_duration, 'REM Duration': rem_duration, 'Sleep Efficiency': sleep_efficiency, 'Dose': dose, 'Taxonomy': taxonomy, 'Dataset': dataset} #'Age': mit_age}
     
-    for i, col_name in enumerate(['Model Score', 'REM Latency', 'SWS Duration', 'REM Duration', 'Sleep Efficiency', 'Age']):
+    for i, col_name in enumerate(['Model Score', 'REM Latency', 'SWS Duration', 'REM Duration', 'Sleep Efficiency']): #'Age'
         col = plot_columns[col_name]
 
         ax2[0, i].set_title(col_name, fontweight='bold') ## bold the title
@@ -358,7 +358,7 @@ ax3[3, 0].set_ylabel('Fold 3', fontweight='bold')
 
 ## set the background color of all subplots to gray 
 fig2.savefig('tsne_ablation_v4.png', dpi=300, bbox_inches='tight')
-fig3.savefig('tsne_ablation_v4_pos.png', dpi=300, bbox_inches='tight')
+# fig3.savefig('tsne_ablation_v4_pos.png', dpi=300, bbox_inches='tight')
 
 # plt.show()
 sys.exit()

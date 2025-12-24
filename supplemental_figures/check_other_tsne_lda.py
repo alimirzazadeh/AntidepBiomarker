@@ -5,7 +5,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from matplotlib.patches import Patch
-
+import os 
+import sys 
+sys.path.append('./')
+CSV_DIR = 'data/'
 """
     This script does a TSNE by medication type in the following method: 
     1. We filter data to only taking a single medication class
@@ -16,7 +19,10 @@ from matplotlib.patches import Patch
 """
 
 
-df = pd.read_csv('../data/master_dataset.csv')
+df = pd.read_csv(os.path.join(CSV_DIR,'anonymized_inference_v6emb_3920_all.csv'))
+df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'anonymized_antidep_taxonomy_all_datasets_v6.csv'))
+df = pd.merge(df, df_taxonomy, on='filename', how='inner')
+
 df = df[['taxonomy','filename','pid','fold','dataset'] + [col for col in df.columns if col.startswith('latent_')]].copy()
 
 ## classes to use are: TCA, SNRI, SSRI, Bupropion, Mirtazapine
@@ -68,4 +74,4 @@ for fold in range(4):
     ax[fold].set_yticks([])
     ax[fold].set_facecolor('whitesmoke')
     ax[fold].set_ylabel('Fold ' + str(fold), fontweight='bold')
-plt.savefig('tsne_lda_by_medication_type.png', dpi=300, bbox_inches='tight')
+plt.savefig('supplemental_figures/tsne_lda_by_medication_type.png', dpi=300, bbox_inches='tight')

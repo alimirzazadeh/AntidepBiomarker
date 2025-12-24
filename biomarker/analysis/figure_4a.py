@@ -87,10 +87,6 @@ def load_and_preprocess_data():
     # Apply sigmoid transformation to predictions
     df['pred'] = 1 / (1 + np.exp(-df['pred'])) 
     
-    # Extract filename and clean patient IDs
-    # df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
-    # df['pid'] = df.apply(lambda x: x['pid'] if x['dataset'] != 'wsc' else x['pid'][1:], axis=1)
-    # df['pid'] = df.apply(lambda x: x['pid'] if x['dataset'] != 'mros' else x['pid'][1:], axis=1)
     
     # Aggregate by filename (take mean for numeric, first value for non-numeric)
     df = df.groupby('filename').agg(lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0])
@@ -146,11 +142,7 @@ def process_wsc_medications(EXP_FOLDER = 'data/'):
         'anticholinergics': ['dr219','dr221','dr235','dr239','dr207','dr229','dr783','dr854','dr759','dr717','dr256']
     }
     
-    # # Create filename for WSC data
-    # df_wsc_meds['filename'] = df_wsc_meds.apply(
-    #     lambda x: f'wsc-visit{x["wsc_vst"]}-{x["wsc_id"]}-nsrr.npz', 
-    #     axis=1
-    # )
+
     
     # Create binary flags for each medication category
     for category, medications in medication_categories.items():
@@ -183,15 +175,7 @@ def extract_medication_groups(df):
     groups['convuls'] = df[(df['label'] == 0) & (df['convuls'] == True)]['pred'].values
     groups['hypnotics'] = df[(df['label'] == 0) & (df['hypnotics'] == True)]['pred'].values
     groups['anticholinergics'] = df[(df['label'] == 0) & (df['anticholinergics'] == True)]['pred'].values
-    # Antidepressant users without other medications
-    # groups['antidep'] = df[
-    #     (df['label'] == 1) & 
-    #     (df['benzos'] == False) & 
-    #     (df['antipsycho'] == False) & 
-    #     (df['convuls'] == False) & 
-    #     (df['hypnotics'] == False) & 
-    #     (df['anticholinergics'] == False)
-    # ]['pred'].values
+
     # All Antidepressant users 
     groups['antidep'] = df[(df['label'] == 1)]['pred'].values
     

@@ -21,7 +21,7 @@ def calculate_rem_duration(sleep_stage):
     return np.sum(sleep_stage == 4) 
 
 ## this is sleep efficiency 
-def calculate_sleep_continuity(sleep_stage):
+def calculate_sleep_efficiency(sleep_stage):
     return np.sum(sleep_stage > 0) / (np.sum(sleep_stage > 0) + np.sum(sleep_stage == 0))
 
 
@@ -74,7 +74,7 @@ for idx, row in tqdm(control_df.iterrows()):
     control_df.loc[idx, 'rem_latency_gt'] = calculate_rem_latency(sleep_stage)
     control_df.loc[idx, 'sws_duration_gt'] = calculate_sws_duration(sleep_stage)
     control_df.loc[idx, 'rem_duration_gt'] = calculate_rem_duration(sleep_stage)
-    control_df.loc[idx, 'sleep_efficiency_gt'] = calculate_sleep_continuity(sleep_stage)
+    control_df.loc[idx, 'sleep_efficiency_gt'] = calculate_sleep_efficiency(sleep_stage)
     
     pred_filepath = f"{STAGE_PREDICTION_DIR}/{dataset}/thorax/{row['filename']}"
     try:
@@ -86,7 +86,7 @@ for idx, row in tqdm(control_df.iterrows()):
     control_df.loc[idx, 'rem_latency_pred'] = calculate_rem_latency(pred_sleep_stage)
     control_df.loc[idx, 'sws_duration_pred'] = calculate_sws_duration(pred_sleep_stage)
     control_df.loc[idx, 'rem_duration_pred'] = calculate_rem_duration(pred_sleep_stage)
-    control_df.loc[idx, 'sleep_efficiency_pred'] = calculate_sleep_continuity(pred_sleep_stage)
+    control_df.loc[idx, 'sleep_efficiency_pred'] = calculate_sleep_efficiency(pred_sleep_stage)
 
 for idx, row in antidep_df.iterrows():
     # if idx % 10 != 0:
@@ -121,7 +121,7 @@ for idx, row in antidep_df.iterrows():
     antidep_df.loc[idx, 'rem_latency_gt'] = calculate_rem_latency(sleep_stage)
     antidep_df.loc[idx, 'sws_duration_gt'] = calculate_sws_duration(sleep_stage)
     antidep_df.loc[idx, 'rem_duration_gt'] = calculate_rem_duration(sleep_stage)
-    antidep_df.loc[idx, 'sleep_efficiency_gt'] = calculate_sleep_continuity(sleep_stage)
+    antidep_df.loc[idx, 'sleep_efficiency_gt'] = calculate_sleep_efficiency(sleep_stage)
     
     pred_filepath = f"{STAGE_PREDICTION_DIR}/{dataset}/thorax/{row['filename']}"
     try:
@@ -133,7 +133,7 @@ for idx, row in antidep_df.iterrows():
     antidep_df.loc[idx, 'rem_latency_pred'] = calculate_rem_latency(pred_sleep_stage)
     antidep_df.loc[idx, 'sws_duration_pred'] = calculate_sws_duration(pred_sleep_stage)
     antidep_df.loc[idx, 'rem_duration_pred'] = calculate_rem_duration(pred_sleep_stage)
-    antidep_df.loc[idx, 'sleep_efficiency_pred'] = calculate_sleep_continuity(pred_sleep_stage)
+    antidep_df.loc[idx, 'sleep_efficiency_pred'] = calculate_sleep_efficiency(pred_sleep_stage)
 
 control_df['label'] = 0
 antidep_df['label'] = 1

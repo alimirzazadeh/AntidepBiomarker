@@ -41,35 +41,27 @@ reset_font_size()
 print('Generating mdd confound figure...')
 generate_mdd_confound_figure(ax=ax11, save=False)
 ax11.set_title('Robustness across Depression Severity Levels', fontsize=font_size)
-# ax11.text(-0.05, 1.05, 'e)', transform=ax11.transAxes, fontsize=font_size, fontfamily='Calibri', fontweight='bold', 
-#           verticalalignment='top', horizontalalignment='left')
-# ax11.text(-0.15, 1.15, 'e2)', transform=ax11.transAxes, fontsize=14, fontweight='bold', 
-#           verticalalignment='top', horizontalalignment='left')
 
 reset_font_size()
 print('Generating fairness analysis figure...')
 generate_fairness_analysis_figure(ax=ax10, save=False, age_sex=False, bmi=True)
 ax10.set_title('Robustness across BMI Levels', fontsize=font_size)
-# ax10.text(-0.05, 1.05, 'd)', transform=ax10.transAxes, fontsize=18, fontfamily='Calibri', fontweight='bold', 
-#           verticalalignment='top', horizontalalignment='left')
+
 reset_font_size()
 print('Generating cotherapy analysis figure...')
 generate_cotherapy_analysis_figure(ax=ax01, save=False)
 ax01.set_title('Robustness to Drug Co-Therapy', fontsize=font_size)
-# ax01.text(-0.05, 1.05, 'b)', transform=ax01.transAxes, fontsize=18, fontfamily='Calibri', fontweight='bold', 
-#           verticalalignment='top', horizontalalignment='left')
+
 reset_font_size()
 print('Generating other medications figure...')
 generate_other_medications_figure(ax=ax00, save=False)
 ax00.set_title('Robustness to Psychotropic and Anticholinergic Medications', fontsize=font_size)
-# ax00.text(-0.05, 1.05, 'a)', transform=ax00.transAxes, fontsize=18, fontfamily='Calibri', fontweight='bold', 
-#           verticalalignment='top', horizontalalignment='left')
+
 reset_font_size()
 print('Generating osa figure...')
 generate_osa_figure(ax=ax02, save=False)
 ax02.set_title('Robustness to Sleep Apnea', fontsize=font_size)
-# ax02.text(-0.05, 1.05, 'c)', transform=ax02.transAxes, fontsize=18, fontfamily='Calibri', fontweight='bold', 
-#           verticalalignment='top', horizontalalignment='left')
+
 
 plt.tight_layout()
 plt.subplots_adjust(hspace=0.47, wspace=0.35) ## was 0.33 before 

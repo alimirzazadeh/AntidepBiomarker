@@ -16,40 +16,13 @@ num_matches = 3
 age_tolerance = 5 
 
 # File paths
-df = pd.read_csv('data/anonymized_inference_v6emb_3920_all.csv')
+df = pd.read_csv('data/inference_v6emb_3920_all.csv')
 df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
 df = df.groupby('filename').agg('first').reset_index()
 print(df.shape)
 
-# def get_post_onset_trend(mage, stage, which_stage=2):
-#     if type(which_stage) is list:
-#         is_n2 = np.zeros_like(stage).astype(bool)
-#         for stg in which_stage:
-#             is_n2 = is_n2 + (stage == stg)
-#     else:    
-#         is_n2 = (stage == which_stage)
 
-#     if len(stage) == 0 or 2 not in stage:
-#         return None
-#     onset_idx = np.argwhere(stage > 0)[0][0]
-
-#     if len(stage) > onset_idx + 6 * 60 * 2:
-#         stage = stage[onset_idx:onset_idx + 6*60*2]
-#         mage = mage[:, onset_idx:onset_idx + 6*60*2]
-#         is_n2 = is_n2[onset_idx:onset_idx + 6*60*2]
-#     else:
-#         stage = stage[onset_idx:]
-#         mage = mage[:, onset_idx:]
-#         is_n2 = is_n2[onset_idx:]
-            
-#     output = np.zeros((256, 6 * 60 * 2))
-#     output[:] = np.nan 
-#     res = mage[:, :len(stage)]
-#     is_n2 = is_n2[:len(stage)]
-#     res[:, ~is_n2] = np.nan 
-#     output[:, :len(stage)] = res
-#     return output 
 
 def normalize_gt(eeg, dataset ):
     aligned_stats = {
@@ -312,12 +285,7 @@ else:
 # Initialize data containers
 control_pwr_sleep = [] 
 antidep_pwr_sleep = [] 
-antidep_pwr_sleep_gt = [] 
-control_pwr_sleep_gt = [] 
-antidep_pwr_sleep_l1 = [] 
 control_pwr_sleep_l1 = [] 
-antidep_pwr_sleep_gt_norm = [] 
-control_pwr_sleep_gt_norm = [] 
 
 # Process antidepressant files
 
@@ -332,22 +300,12 @@ for file in tqdm(all_antideps):
     if mg is None or st is None:
         continue
     
-    # post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
-    # post_onset2 = get_post_onset_trend(mg, st, which_stage=[1,2,3])
-    # if post_onset is None or post_onset2 is None:
-    #     continue 
     
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
-    mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     mage_gt_norm = normalize_gt(mage_gt, dataset)
-    mage2_sleep_gt_norm = naive_power_post_onset(mage_gt_norm, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     
     if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
         antidep_pwr_sleep.append(mage2_sleep)
-    if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
-        antidep_pwr_sleep_gt.append(mage2_sleep_gt)
-        antidep_pwr_sleep_gt_norm.append(mage2_sleep_gt_norm)
-        antidep_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
 
 # Process control files
 for file in tqdm(all_controls):
@@ -360,90 +318,35 @@ for file in tqdm(all_controls):
     
     if mg is None or st is None:
         continue
-    
-    # post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
-    # post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
-    # if post_onset is None:
-    #     continue 
-    
+
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
-    mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4]) 
     mage_gt_norm = normalize_gt(mage_gt, dataset)
-    mage2_sleep_gt_norm = naive_power_post_onset(mage_gt_norm, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
         control_pwr_sleep.append(mage2_sleep)
-    if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
-        control_pwr_sleep_gt.append(mage2_sleep_gt)
-        control_pwr_sleep_gt_norm.append(mage2_sleep_gt_norm)
-        control_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
 # Convert to numpy arrays
 control_pwr_sleep = np.stack(control_pwr_sleep)
 antidep_pwr_sleep = np.stack(antidep_pwr_sleep)
-antidep_pwr_sleep_gt = np.stack(antidep_pwr_sleep_gt)
-control_pwr_sleep_gt = np.stack(control_pwr_sleep_gt)
-antidep_pwr_sleep_l1 = np.stack(antidep_pwr_sleep_l1)
-control_pwr_sleep_l1 = np.stack(control_pwr_sleep_l1)
-antidep_pwr_sleep_gt_norm = np.stack(antidep_pwr_sleep_gt_norm)
-control_pwr_sleep_gt_norm = np.stack(control_pwr_sleep_gt_norm)
 
-
-
-# Calculate percent differences with bootstrap
-# if True:
-#     whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
-#     whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt, method='percent_diff')
-#     print('Mean differnece in percent errors: ', np.mean(np.abs(whole_sleep2 - whole_sleep_gt2)))
-#     print('STD of percent errors: ', np.std(np.abs(whole_sleep2 - whole_sleep_gt2)))
-#     l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]))
-#     print('L1 error (individual level):', l1_error)
-#     l1_error_cohort_antidep = np.mean(np.abs(np.mean(antidep_pwr_sleep_gt_norm,0) - np.mean(control_pwr_sleep,0)))
-#     l1_error_cohort_control = np.mean(np.abs(np.mean(antidep_pwr_sleep,0) - np.mean(control_pwr_sleep_gt_norm,0)))
-#     print('L1 error (cohort level antidep):', l1_error_cohort_antidep)
-#     print('L1 error (cohort level control):', l1_error_cohort_control)
+bp() 
 
 if True:
     FONT_SIZE = 12
     whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
-    # whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt, method='percent_diff')
-    l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]), 0)
-    # fig, ax = plt.subplots(3,figsize=(16, 12))
     fig, ax  = plt.subplots(1,figsize=(6.5, 3))
 
     ax.plot(smooth(whole_sleep2, 3), label='Sleep', ls='dashed', color='black')
     ax.fill_between(np.arange(0, 256), smooth(whole_sleep_lower, 3), smooth(whole_sleep_upper, 3), alpha=0.1, color='black')
-    # ax[1].plot(smooth(l1_error, 3), label='L1 Error', ls='dashed', color='black')
-    # ax[1].set_ylim(0.04,0.09)
-    # ax[2].plot(smooth(whole_sleep2, 3), label='Sleep EEG Reconstruction', ls='dashed', color='black')
-    # ax[2].fill_between(np.arange(0, 256), smooth(whole_sleep_lower, 3), smooth(whole_sleep_upper, 3), alpha=0.1, color='black')
-    # ax[2].plot(smooth(whole_sleep_gt2, 3), label='Sleep EEG', ls='dashed', color='gray')
-    # ax[2].fill_between(np.arange(0, 256), smooth(whole_sleep_gt_lower, 3), smooth(whole_sleep_gt_upper, 3), alpha=0.1, color='black')
-    # ax[2].axhline(y=0, color='gray', ls='dotted', alpha=0.8)
     ax.axhline(y=0, color='gray', ls='dotted', alpha=0.8)
     for x in [1, 4, 8, 12, 16]:
         # ax[2].axvline(x * 8, color='gray', ls='dotted', alpha=0.5)
         ax.axvline(x * 8, color='gray', ls='dotted', alpha=0.5)
 
-    # ax[2].set_xlim(-0.01, 256.01)
-    # ax[2].set_xticks(np.arange(0, 257, 32))
-    # ax[2].set_xticklabels(np.arange(0, 33, 4))
     ax.set_xticks(np.arange(0, 257, 32))
     ax.set_xlabel('Frequency (Hz)', fontsize=FONT_SIZE)
     ax.set_xticklabels(np.arange(0, 33, 4))
-    # ax[1].set_xticks(np.arange(0, 257, 32))
-    # ax[1].set_xticklabels(np.arange(0, 33, 4))
-    # ax[0].set_xlabel('Frequency (Hz)')
-    # ax[1].set_xlabel('Frequency (Hz)')
-    # ax[2].set_xlabel('Frequency (Hz)')
-    # ax.set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)', fontsize=FONT_SIZE)
-    # ax[2].set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
-    # ax[1].set_ylabel('Mean Absolute Error (L1)')
-    # ax[2].legend()
     ax.set_ylim(-5,25)
-    # ax[2].set_ylim(-5,25)
     ax.set_xlim(-0.01, 256.01)
-    # ax[1].set_xlim(-0.01, 256.01)
-    # ax[2].set_xlim(-0.01, 256.01)
     plt.savefig(f'biomarker/analysis/figure_6c.png', dpi=300, bbox_inches='tight')
     plt.close()
-bp() 
+
 print('done')

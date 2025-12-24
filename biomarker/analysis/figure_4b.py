@@ -12,7 +12,7 @@ from scipy.stats import ttest_ind
 
 ANONYMIZED = True 
 
-SUBTYPE = False
+
 font_size = 12
 def get_significance_stars(pval):
     if pval < .001: #1e-10:
@@ -46,18 +46,7 @@ def load_and_preprocess_data():
     # Load and merge taxonomy data
     df_taxonomy = pd.read_csv(TAXONOMY_FILE)
     df = pd.merge(df, df_taxonomy, on='filename', how='inner')
-    if SUBTYPE: 
-        df['is_tca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('T') or ',T' in x else 0)
-        df['is_ntca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('N') or ',N' in x else 0)
-        df['is_snri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NN') or ',NN' in x else 0)
-        df['is_ssri'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('NS') or ',NS' in x else 0)
-        # df = df[(df['is_snri'] == 1) | (df['label'] == 0)]
-        df = df[(df['is_snri'] == 1) | (df['is_ssri'] == 1) | (df['is_ntca'] == 1) | (df['is_tca'] == 1) | (df['label'] == 0)]
-    # Group by patient and taxonomy, taking mean of predictions
-    # bp() 
-    # df = df.groupby(['pid', 'taxonomy'], as_index=False).agg(
-    #     lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
-    # )
+
     
     print(f'Total Patient-Taxonomy Combinations: {df.shape[0]}')
     return df
@@ -110,10 +99,7 @@ def generate_cotherapy_analysis_figure(save=True, ax=None):
     sns.boxplot(x='cohort', y='pred', data=df_plot, showfliers=False, palette='Greens', order=order, ax=ax)
     ax.tick_params(axis='x', labelsize=font_size-1)
     ax.tick_params(axis='y', labelsize=font_size)
-        # sns.boxplot(
-        #     x="medication", y="pred", data=df_viz, 
-        #     palette='Greens', ax=ax, order=order, showfliers=False
-        # )
+
     ax.set_ylabel('Model Score', fontsize=font_size)
     ax.set_xlabel('Cohort', fontsize=font_size)
 

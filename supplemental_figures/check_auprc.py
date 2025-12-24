@@ -18,8 +18,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.inspection import permutation_importance
 from tqdm import tqdm
 from ipdb import set_trace as bp
-
-CSV_DIR = '../data/'
+import sys 
+sys.path.append('./')
+CSV_DIR = 'data/'
 def load_and_prepare_data():
     """
     Load and prepare all datasets for analysis.
@@ -29,10 +30,10 @@ def load_and_prepare_data():
     tuple : (df, df_eeg, labels_model_baseline, model1_cols, model2_cols)
     """
     # Load datasets
-    df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
-    df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
-    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
-    df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
+    df = pd.read_csv(os.path.join(CSV_DIR,'anonymized_df_baseline.csv'))
+    df_eeg = pd.read_csv(os.path.join(CSV_DIR,'anonymized_df_baseline_eeg.csv'))
+    labels = pd.read_csv(os.path.join(CSV_DIR,'anonymized_inference_v6emb_3920_all.csv'))
+    df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'anonymized_antidep_taxonomy_all_datasets_v6.csv'))
     
     # Prepare sleep stage features dataset
     df = df.drop(columns=['dataset'])
@@ -44,24 +45,14 @@ def load_and_prepare_data():
     model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
     # Process our model predictions
-    labels['filename'] = labels['filename'].apply(lambda x: x.split('/')[-1])
     labels = labels.groupby('filename', as_index=False).agg(
         lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
     )
     
-    # Clean participant IDs across datasets
-    for dataset in ['wsc', 'mros', 'shhs']:
-        mask = labels['dataset'] == dataset
-        labels.loc[mask, 'pid'] = labels.loc[mask, 'pid'].apply(lambda x: x[1:] if isinstance(x, str) and x else x)
+
     
     # Merge with taxonomy data
     labels_model_baseline = pd.merge(labels, df_taxonomy, on='filename', how='inner')
-    # labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
-    #     'pred': 'mean', 
-    #     'dataset': 'first', 
-    #     'label': 'first', 
-    #     'fold': 'first'
-    # }).reset_index()
     
     # Convert logits to probabilities
     labels_model_baseline['prob'] = 1 / (1 + np.exp(-labels_model_baseline['pred']))
@@ -211,14 +202,7 @@ def run_rf_auroc_pruned(train_set, train_y, test_set, test_y, cols=None):
     )
     model.fit(train_reduced, train_y)
     
-    # Print top feature importances
-    # if selected_cols is not None:
-    #     feature_importances = model.feature_importances_
-    #     sorted_indices = np.argsort(feature_importances)[::-1]
-    #     print("Retained Feature importances:")
-    #     for idx in sorted_indices[:10]:
-    #         print(f"{selected_cols[idx]}: {feature_importances[idx]:.4f}")
-    
+
     # Calculate predictions and AUROC
     y_prob = model.predict_proba(test_reduced)[:, 1]
     train_y_prob = model.predict_proba(train_reduced)[:, 1]
@@ -265,13 +249,6 @@ def run_rf_auroc(train_set, train_y, test_set, test_y, cols=None):
     )
     model.fit(train_set, train_y)
     
-    # Print top feature importances
-    # if cols is not None:
-    #     feature_importances = model.feature_importances_
-    #     sorted_indices = np.argsort(feature_importances)[::-1]
-    #     print("Feature importances:")
-    #     for idx in sorted_indices[:10]:
-    #         print(f"{cols[idx]}: {feature_importances[idx]:.4f}")
     
     # Get predicted probabilities
     y_prob = model.predict_proba(test_set)[:, 1]
@@ -528,41 +505,31 @@ def main():
     print("\n2. Running 4-fold cross-validation...")
     result_sleep_stage, result_eeg = run_cross_validation(df, df_eeg, model1_cols, model2_cols)
     
-
+    BALANCED = True
     ## group each df by patient
-    if True:
-        result_biomarker = labels_model_baseline[['prob','label','dataset','fold','taxonomy','filename','pid']].copy()
-        result_biomarker.rename(columns={'prob': 'prob_biomarker'}, inplace=True)
-        result_eeg.rename(columns={'prob': 'prob_eeg'}, inplace=True)
-        result_sleep_stage.rename(columns={'prob': 'prob_sleep_stage'}, inplace=True)
-        all_results = pd.merge(result_biomarker, result_eeg[['filename', 'prob_eeg']].copy(), on='filename', how='left')
-        all_results = pd.merge(all_results, result_sleep_stage[['filename', 'prob_sleep_stage']].copy(), on='filename', how='left')
-        
-        all_results = all_results.groupby(['pid', 'taxonomy']).agg({'prob_biomarker': 'mean', 'prob_eeg': 'mean', 'prob_sleep_stage': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'filename': 'first'}).reset_index()
-        # result_biomarker = result_biomarker.groupby(['pid', 'taxonomy']).agg({'prob': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'taxonomy': 'first', 'filename': 'first'}).reset_index()
-        # result_eeg = result_eeg.groupby(['pid', 'taxonomy']).agg({'prob': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'taxonomy': 'first', 'filename': 'first'}).reset_index()
-        # result_sleep_stage = result_sleep_stage.groupby(['pid', 'taxonomy']).agg({'prob': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'taxonomy': 'first', 'filename': 'first'}).reset_index()
-        all_rows = [] 
-        for dataset in all_results['dataset'].unique():
-            # if dataset == 'mros':
-            #     bp() 
-            # total_positive = int(all_results[all_results['dataset'] == dataset]['label'].sum())
-            positive_labels = all_results[all_results['dataset'] == dataset][all_results['label'] == 1].copy() 
-            negative_labels = all_results[all_results['dataset'] == dataset][all_results['label'] == 0].copy() 
-            total_positive = len(positive_labels)
-            ## For balanced, uncomment this:
-            # negative_labels = negative_labels.sample(n=total_positive, replace=False)
-            all_rows.append(pd.concat([positive_labels, negative_labels])) 
 
-        all_results = pd.concat(all_rows).reset_index(drop=True)
-    bp() 
-    # labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
-    #     'pred': 'mean', 
-    #     'dataset': 'first', 
-    #     'label': 'first', 
-    #     'fold': 'first'
-    # }).reset_index()
-    # Evaluate per-dataset performance
+    result_biomarker = labels_model_baseline[['prob','label','dataset','fold','taxonomy','filename','pid']].copy()
+    result_biomarker.rename(columns={'prob': 'prob_biomarker'}, inplace=True)
+    result_eeg.rename(columns={'prob': 'prob_eeg'}, inplace=True)
+    result_sleep_stage.rename(columns={'prob': 'prob_sleep_stage'}, inplace=True)
+    all_results = pd.merge(result_biomarker, result_eeg[['filename', 'prob_eeg']].copy(), on='filename', how='left')
+    all_results = pd.merge(all_results, result_sleep_stage[['filename', 'prob_sleep_stage']].copy(), on='filename', how='left')
+    
+    all_results = all_results.groupby(['pid', 'taxonomy']).agg({'prob_biomarker': 'mean', 'prob_eeg': 'mean', 'prob_sleep_stage': 'mean', 'label': 'mean', 'dataset': 'first', 'fold': 'first', 'filename': 'first'}).reset_index()
+
+    all_rows = [] 
+    for dataset in all_results['dataset'].unique():
+
+        positive_labels = all_results[all_results['dataset'] == dataset][all_results['label'] == 1].copy() 
+        negative_labels = all_results[all_results['dataset'] == dataset][all_results['label'] == 0].copy() 
+        total_positive = len(positive_labels)
+        ## For balanced, uncomment this:
+        if BALANCED:
+            negative_labels = negative_labels.sample(n=total_positive, replace=False)
+        all_rows.append(pd.concat([positive_labels, negative_labels])) 
+
+    all_results = pd.concat(all_rows).reset_index(drop=True)
+
     print("\n3. Evaluating per-dataset performance...")
     evaluate_per_dataset_performance(all_results)
     

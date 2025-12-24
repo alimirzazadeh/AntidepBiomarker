@@ -9,6 +9,7 @@ import pandas as pd
 from matplotlib.colors import ListedColormap
 from REM_ALIGNMENT_PROD import SleepStageAlignment
 
+raise NotImplementedError("Note: This file requires the MIT dataset, which is not provided due to IRB.")
 
 df = pd.read_csv('../data/inference_v6emb_3920_all.csv')
 df_other = df[df['dataset'] == 'rf']
