@@ -14,10 +14,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import roc_auc_score
+import sys 
+raise NotImplementedError("Note: This file requires the MIT dataset, which is not provided due to IRB.")
 
+sys.path.append('./')
 # Configuration
-INFERENCE_FILE = 'data/inference_v6emb_3920_all_dosagev2.csv'
-TAXONOMY_FILE = 'data/antidep_taxonomy_all_datasets_v6.csv'
+INFERENCE_FILE = 'data/anonymized_inference_v6emb_3920_all_dosagev2.csv'
+TAXONOMY_FILE = 'data/anonymized_antidep_taxonomy_all_datasets_v6.csv'
 OUTPUT_FILE = 'biomarker/analysis/figure_4c.png'
 DOSAGE_COL = 'dosage_v2' if 'dosagev2' in INFERENCE_FILE else 'dosage'
 

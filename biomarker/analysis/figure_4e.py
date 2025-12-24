@@ -100,29 +100,16 @@ def round_pandas_interval(interval, ndigits=0):
     )
 
 def generate_mdd_confound_figure(save=True, ax=None):
-    df = pd.read_csv('data/wsc-dataset-0.7.0.csv')
-    mros = pd.read_csv('data/mros_gds_progression.csv')
-    mros_gds = {} 
-    for i, row in mros.iterrows():
-        filename = f'mros-visit1-aa{row["nsrrid"][2:]}.npz'
-        mros_gds[filename] = row['DPGS15_1']
-        filename = f'mros-visit2-aa{row["nsrrid"][2:]}.npz'
-        mros_gds[filename] = row['DPGS15_2']
-    mros = pd.DataFrame(list(mros_gds.items()), columns=['filename', 'gds'])
-    df['filename'] = df.apply(
-            lambda x: f'wsc-visit{x["wsc_vst"]}-{x["wsc_id"]}-nsrr.npz', 
-            axis=1
-        )
-    labels = pd.read_csv('data/inference_v6emb_3920_all.csv')
+    df = pd.read_csv('data/anonymized_wsc-dataset-0.7.0.csv')
 
-    labels['filename'] = labels['filepath'].apply(lambda x: x.split('/')[-1])
+    labels = pd.read_csv('data/anonymized_inference_v6emb_3920_all.csv')
+
     labels = labels.groupby('filename').agg(
             lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
         )
     labels['pred'] = 1 / (1 + np.exp(-labels['pred']))
     df = df[['zung_index', 'filename']]
     df = df.merge(labels, on='filename', how='inner')
-    mros = mros.merge(labels, on='filename', how='inner')
 
     df.dropna(subset=['zung_index', 'pred'], inplace=True)
     df_pos = df[df['label'] == 1].copy()
@@ -238,7 +225,7 @@ def generate_mdd_confound_figure(save=True, ax=None):
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     if save:
         plt.tight_layout()
-        plt.savefig('check_mdd_confound_v3.png', dpi=300, bbox_inches='tight')
+        plt.savefig('biomarker/analysis/anonymized_figure_4e.png', dpi=300, bbox_inches='tight')
     return ax
 
 if __name__ == '__main__':

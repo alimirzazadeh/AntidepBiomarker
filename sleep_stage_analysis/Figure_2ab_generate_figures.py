@@ -10,19 +10,13 @@ from scipy import stats
 import dataframe_image as dfi
 import sys 
 import matplotlib.patches as mpatches
-SIMULATED = False
+sys.path.append('./')
+ANONYMIZED = True
 MASTER_DATASET = False
 
 FONT_SIZE=8
 
-if MASTER_DATASET and SIMULATED:
-    df = pd.read_csv('../data/SIMULATED_master_dataset.csv')
-elif MASTER_DATASET:
-    df = pd.read_csv('../data/master_dataset.csv')
-elif SIMULATED:
-    df = pd.read_csv('SIMULATED_figure_draft_v16_rem_latency.csv')
-else:
-    df = pd.read_csv('../data/figure_draft_v16_rem_latency.csv')
+df = pd.read_csv('data/anonymized_figure_draft_v16_rem_latency.csv')
 
 control_df = df[df['label'] == 0]
 antidep_df = df[df['label'] == 1]
@@ -185,7 +179,7 @@ if True:
     ax[1, 1].set_yticklabels(ax[1, 1].get_yticklabels(), fontsize=FONT_SIZE)
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.36)
-    plt.savefig('Figure_3a.png', dpi=300)
+    plt.savefig('sleep_stage_analysis/anonymized_figure_3a.png', dpi=300)
 
 ## now get the correlation between the ground truth and predicted features 
 
@@ -259,6 +253,6 @@ if True:
                          .hide(axis="index")  # hide index if not needed
 
     # Save as PNG
-    dfi.export(styled_df, "Figure_3b.png", dpi=600, fontsize=FONT_SIZE) ## increase the resolution 
+    dfi.export(styled_df, "sleep_stage_analysis/anonymized_figure_3b.png", dpi=600, fontsize=FONT_SIZE) ## increase the resolution 
     
 

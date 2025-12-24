@@ -81,5 +81,5 @@ if __name__ == "__main__":
         
     fig.supylabel('Consecutive Nights')
     fig.subplots_adjust(left=0.04)
-    fig.savefig(os.path.join('Figure_3c.png'), dpi=300)
+    fig.savefig(os.path.join('Figure_2c.png'), dpi=300)
     

@@ -14,6 +14,9 @@ from scipy.stats import pearsonr
 from sklearn.manifold import TSNE
 from scipy.stats import ttest_ind
 import pickle
+import os 
+sys.path.append('./')
+
 def tsne_progression_plot(
     X,                      # (n, 2) t-SNE or UMAP coordinates
     y,                      # (n,) progression variable
@@ -131,74 +134,11 @@ def tsne_progression_plot(
 
 
 
-df = pd.read_csv('../../data/inference_v6emb_3920_all.csv')
-df['filename'] = df['filename'].apply(lambda x: x.split('/')[-1])
-df_latency = pd.read_csv('../../data/figure_draft_v16_rem_latency.csv')
-df_powers = pd.read_csv('../../data/so_beta_powers_sleep_only.csv')
-df_powers['filename'] = df_powers['concat_names'].apply(lambda x: x.split('/')[-1])
-
-
-def get_power_pred_correlation(df):
-    df = df.copy() 
-    df = df[['filename', 'pred', 'label']]
-    df_mages = pd.read_csv('all_mages.csv')
-    df_mages['filename'] = df_mages['filename'].apply(lambda x: x.split('/')[-1])
-    df_mages = df_mages.merge(df, on='filename', how='inner')
-    y2 = df_mages['pred']
-    y2 = 1 / (1 + np.exp(-y2)) 
-    fig, ax = plt.subplots(3,figsize=(10, 5))
-    for line in ['sleep']: #,'nrem',  'rem' , 'all']:
-        subset_cols = [col for col in df_mages.columns if col.startswith(line+'_')]
-        pearons_arr = np.zeros(256)
-        for col in subset_cols:
-            idx = int(col.split('_')[-1])
-            pearons_arr[idx] = pearsonr(df_mages[col], y2)[0]
-            
-        ax[0].plot(pearons_arr, label=line)
-        
-        pearons_arr_control = np.zeros(256)
-        pearons_arr_antidep = np.zeros(256)
-        control_mask = df_mages['label'] == 0
-        antidep_mask = df_mages['label'] == 1
-        for col in subset_cols:
-            idx = int(col.split('_')[-1])
-            na_mask = df_mages[col].isna()
-            pearons_arr_control[idx] = pearsonr(df_mages[col][control_mask & ~na_mask], y2[control_mask & ~na_mask])[0]
-            pearons_arr_antidep[idx] = pearsonr(df_mages[col][antidep_mask & ~na_mask], y2[antidep_mask & ~na_mask])[0]
-            
-        ax[1].plot(pearons_arr_control, label=line)
-        ax[2].plot(pearons_arr_antidep, label=line)
-    
-    ## calculate the mean so and beta in sleep and get the correlation of their sum with the prediction 
-    so_cols = [col for col in df_mages.columns if col.startswith('sleep_') and int(col.split('_')[-1]) < 8]
-    beta_cols = [col for col in df_mages.columns if col.startswith('sleep_') and int(col.split('_')[-1]) > 28 * 8]
-    so_mean = np.mean(df_mages[so_cols], axis=1)
-    beta_mean = np.mean(df_mages[beta_cols], axis=1)
-    sum_mean = so_mean + beta_mean
-    for i, mask in enumerate([None, control_mask, antidep_mask]):
-        mask_name = ['Overall', 'Control', 'Antidepressant'][i]
-        if mask is None:
-            mask = np.ones(len(y2), dtype=bool) 
-        else:
-            mask = mask.astype(bool)
-        pearons_arr_so = pearsonr(so_mean[mask], y2[mask])[0]
-        pearons_arr_beta = pearsonr(beta_mean[mask], y2[mask])[0]
-        pearons_arr_sum = pearsonr(sum_mean[mask], y2[mask])[0]
-        print(f"{mask_name} SO mean correlation: {pearons_arr_so:.3f}")
-        print(f"{mask_name} Beta mean correlation: {pearons_arr_beta:.3f}")
-        print(f"{mask_name} Sum mean correlation: {pearons_arr_sum:.3f}")
-    
-    ax[0].set_title('Overall')
-    ax[1].set_title('Control')
-    ax[2].set_title('Antidepressant')
-    ax[0].legend()
-    
-    
-    ttest_control_antidep_so = ttest_ind(so_mean[control_mask], so_mean[antidep_mask])
-    ttest_control_antidep_beta = ttest_ind(beta_mean[control_mask], beta_mean[antidep_mask])
-    print(f"Control vs Antidepressant SO mean t-test: {ttest_control_antidep_so.pvalue:.3e} {ttest_control_antidep_so.statistic:.3f}")
-    print(f"Control vs Antidepressant Beta mean t-test: {ttest_control_antidep_beta.pvalue:.3e} {ttest_control_antidep_beta.statistic:.3f}")
-    return df_mages
+df = pd.read_csv('data/anonymized_inference_v6emb_3920_all.csv')
+# df['filename'] = df['filename'].apply(lambda x: x.split('/')[-1])
+df_latency = pd.read_csv('data/anonymized_figure_draft_v16_rem_latency.csv')
+df_powers = pd.read_csv('data/anonymized_so_beta_powers_sleep_only.csv')
+# df_powers['filename'] = df_powers['concat_names'].apply(lambda x: x.split('/')[-1])
 
 def plot_binned_boxplots(x, y, min_x, max_x, n_bins=8, ax=None):
     FONT_SIZE = 9
@@ -375,5 +315,8 @@ for fold in range(4):
         tsne_progression_plot(x_tsne, y2, ax=ax2[fold, 0], method='smooth', cmap='magma', ticks = np.arange(0, 1, 0.2))
 
 plt.tight_layout()
-plt.savefig('tsne_remlatency_overlay_v3.png', dpi=300, bbox_inches='tight')
+if SINGLE_FOLD:
+    plt.savefig('biomarker/analysis/anonymized_figure_6ab.png', dpi=300, bbox_inches='tight')
+else:
+    plt.savefig('supplemental_figures/anonymized_tsne_remlatency_overlay_v3.png', dpi=300, bbox_inches='tight')
 

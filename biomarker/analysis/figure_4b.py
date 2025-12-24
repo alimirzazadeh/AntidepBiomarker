@@ -4,13 +4,13 @@ import numpy as np
 from ipdb import set_trace as bp
 import sys 
 sys.path.append('./')
-from biomarker.analysis.figure_4d import process_mros_medications, process_wsc_medications, process_mit_medications
+from biomarker.analysis.figure_4a import process_mros_medications, process_wsc_medications, process_mit_medications
 CSV_DIR = 'data/'
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import ttest_ind
 
-ANONYMIZED = TRUE 
+ANONYMIZED = True 
 
 SUBTYPE = False
 font_size = 12
@@ -23,8 +23,8 @@ def get_significance_stars(pval):
         return '*'
     else:
         return 'ns'
-INFERENCE_FILE = os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv')
-TAXONOMY_FILE = os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv')
+INFERENCE_FILE = os.path.join(CSV_DIR,'anonymized_inference_v6emb_3920_all.csv')
+TAXONOMY_FILE = os.path.join(CSV_DIR,'anonymized_antidep_taxonomy_all_datasets_v6.csv')
 
 def load_and_preprocess_data():
     """
@@ -35,23 +35,13 @@ def load_and_preprocess_data():
     """
     # Load inference results
     df = pd.read_csv(INFERENCE_FILE)
-    df = df[df['dataset'].isin(['mros', 'wsc','rf'])].copy() 
+    df = df[df['dataset'].isin(['mros', 'wsc'])].copy() 
 
-    if not ANONYMIZED:    
-        # Group by filename and aggregate (mean for numeric, first for non-numeric)
-        df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
-        df = df.groupby('filename').agg(
-            lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
-        )
-        
-        # Convert logits to probabilities using sigmoid
-        df['pred'] = 1 / (1 + np.exp(-df['pred']))
-        
-        # Clean patient IDs by removing dataset prefixes
-        df['pid'] = df.apply(
-            lambda x: x['pid'][1:] if x['dataset'] in ['shhs', 'mros', 'wsc'] else x['pid'], 
-            axis=1
-        )
+
+    df = df.groupby('filename').agg(
+        lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
+    )
+    df['pred'] = 1 / (1 + np.exp(-df['pred']))
     
     # Load and merge taxonomy data
     df_taxonomy = pd.read_csv(TAXONOMY_FILE)
@@ -79,9 +69,10 @@ def generate_cotherapy_analysis_figure(save=True, ax=None):
     df = load_and_preprocess_data()
     df_mros_meds = process_mros_medications(EXP_FOLDER = CSV_DIR)
     df_wsc_meds = process_wsc_medications(EXP_FOLDER = CSV_DIR)
-    df_mit_meds = process_mit_medications(EXP_FOLDER = CSV_DIR)
+    # df_mit_meds = process_mit_medications(EXP_FOLDER = CSV_DIR)
     # Combine medication data
-    df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
+    # df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
+    df_other = pd.concat([df_mros_meds, df_wsc_meds])
     print('Before merge data: ', df.shape[0])
     df = df.merge(df_other, on='filename', how='inner')
 
@@ -95,7 +86,6 @@ def generate_cotherapy_analysis_figure(save=True, ax=None):
     
     print(df[df['dataset'] == 'mros'].shape[0])
     print(df[df['dataset'] == 'wsc'].shape[0])
-    print(df[df['dataset'] == 'rf'].shape[0])
     print('Total merged data: ', df.shape[0])
 
 
@@ -186,7 +176,7 @@ def generate_cotherapy_analysis_figure(save=True, ax=None):
     
     if save:
         plt.tight_layout()
-        plt.savefig('supplemental_figures/cotherapy_analysis_overall_v2.png', dpi=300, bbox_inches='tight')
+        plt.savefig('biomarker/analysis/anonymized_figure_4b.png', dpi=300, bbox_inches='tight')
     return ax
 
 

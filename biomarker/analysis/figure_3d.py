@@ -119,7 +119,7 @@ def bootstrap_auroc_ci(y_true, y_prob, n_bootstrap=1000, ci=0.95, random_state=4
     return mean, lower, upper
 
 
-def generate_fairness_analysis_figure(save=True, ax=None, age_sex=False, bmi=True):
+def generate_fairness_analysis_figure(save=True):
 
     CSV_DIR = 'data/'
     INFERENCE_FILE = os.path.join(CSV_DIR,'anonymized_inference_v6emb_3920_all.csv')
@@ -187,96 +187,56 @@ def generate_fairness_analysis_figure(save=True, ax=None, age_sex=False, bmi=Tru
     ## now plot each as an sns barplot , make the x axis labels sorted by age and print as X-X
 
 
-    ## repeat zung_bins 
-    print('Unique Datasets used in BMI Analysis: ', df_bmi['dataset'].unique())
-    bmi_bins = df_bmi['bmi_bin'].unique()
-    bins = [0, 18.5, 25, 30, 35, 40, 100]
-    labels = ['<18.5', '18.5-25', '25-30', '30-35', '35-40', '>40']
-    df_bmi['bmi_bin'] = pd.cut(df_bmi['mit_bmi'], bins=bins, labels=labels, include_lowest=True)
-    df_bmi['Group'] = df_bmi['label'].apply(lambda x: 'Control' if x == 0 else 'Antidepressant')
-    
-    if ax is None:
-        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
-    
-    # Create boxplots using seaborn with hue for paired boxes
-    sns.boxplot(data=df_bmi, x='bmi_bin', y='pred', hue='Group', 
-                order=labels, palette='Greens', ax=ax, showfliers=False)
-    # Remove legend
-    ax.legend_.remove()
-    
-    # Add N labels above each boxplot (above the median line)
-    # Get the positions of the boxes
-    box_positions = ax.get_xticks()
-    n_bins = len(labels)
-    
-    for i, label in enumerate(labels):
-        # Control box (left side of pair)
-        subset_control = df_bmi[(df_bmi['bmi_bin'] == label) & 
-                                (df_bmi['Group'] == 'Control')]['pred'].dropna()
-        if len(subset_control) > 0:
-            n = len(subset_control)
-            median_val = subset_control.median()
-            # Position is box_positions[i] - 0.2 (offset for paired boxes)
-            ax.text(box_positions[i] - 0.2, median_val + 0.01, f'N={n}', 
-                ha='center', va='bottom', fontsize=font_size)
-        
-        # Antidepressant box (right side of pair)
-        subset_antidep = df_bmi[(df_bmi['bmi_bin'] == label) & 
-                            (df_bmi['Group'] == 'Antidepressant')]['pred'].dropna()
-        if len(subset_antidep) > 0:
-            n = len(subset_antidep)
-            median_val = subset_antidep.median()
-            # Position is box_positions[i] + 0.2 (offset for paired boxes)
-            ax.text(box_positions[i] + 0.2, median_val + 0.01, f'N={n}', 
-                ha='center', va='bottom', fontsize=font_size)
-        
-        # Compute t-test between Control and Antidepressant for this bin
-        if len(subset_control) > 0 and len(subset_antidep) > 0:
-            ttest = ttest_ind(subset_control.values, subset_antidep.values)
-            print(f'T-test p value for {label} (Control vs Antidepressant): {ttest.pvalue:.4e}')
-            
-            # Draw significance bracket and stars
-            # Get max y-value from both boxes to position bracket above
-            max_y_control = subset_control.max() if len(subset_control) > 0 else 0
-            max_y_antidep = subset_antidep.max() if len(subset_antidep) > 0 else 0
-            max_y = max(max_y_control, max_y_antidep)
-            
-            # Position bracket slightly above the boxes
-            bracket_y = max_y + 0.05
-            sig_stars = get_significance_stars(ttest.pvalue)
-            
-            # Draw bracket
-            x1 = box_positions[i] - 0.2
-            x2 = box_positions[i] + 0.2
-            x_center = box_positions[i]
-            
-            # Draw horizontal line
-            ax.plot([x1, x2], [bracket_y, bracket_y], 'k-', linewidth=1)
-            # Draw vertical lines at ends
-            ax.plot([x1, x1], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
-            ax.plot([x2, x2], [bracket_y - 0.01, bracket_y], 'k-', linewidth=1)
-            # Add significance stars
-            ax.text(x_center, bracket_y + 0.01, sig_stars, ha='center', va='bottom', fontsize=font_size)
-        
-        # Compute t-test against all positives/negatives
-        if len(subset_control) > 0:
-            ttest = ttest_ind(subset_control.values, df_bmi[df_bmi['Group'] == 'Antidepressant']['pred'].dropna().values)
-            print(f'T-test p value for Control {label} vs all positives: {ttest.pvalue:.4e}')
-        if len(subset_antidep) > 0:
-            ttest = ttest_ind(subset_antidep.values, df_bmi[df_bmi['Group'] == 'Control']['pred'].dropna().values)
-            print(f'T-test p value for Antidepressant {label} vs all negatives: {ttest.pvalue:.4e}')
-    
-    ax.set_ylabel('Model Score', fontsize=font_size)
-    ax.set_xlabel('BMI', fontsize=font_size)
-    ax.set_ylim(0, 1.1)  # Increased to accommodate significance brackets
-    ax.grid(axis='y', alpha=0.3, linestyle='--')
-    ax.tick_params(axis='x', labelsize=font_size)
-    ax.tick_params(axis='y', labelsize=font_size)
-    if save:
-        plt.tight_layout()
-        plt.savefig('biomarker/analysis/anonymized_figure_4d.png', dpi=300, bbox_inches='tight')
-    return ax
+    # Create the bar plot with string labels
+    ## add an error bar for each bar 
+
+    age_bins = sorted(list(age_results.keys()), key=lambda x: x.left)
+    # Convert intervals to string labels for plotting
+    age_labels = [f"{int(age_bin.left)}-{int(age_bin.right)}" for age_bin in age_bins]
+    # sns.barplot(x=age_labels, y=[age_results[age_bin][0] for age_bin in age_bins], ax=ax1, palette='Greens')
+    sex_performance_table = pd.DataFrame(columns=['Sex', 'AUROC', 'N'])
+    age_performance_table = pd.DataFrame(columns=['Age Range', 'AUROC', 'N'])
+    for i, age_bin in enumerate(age_bins):
+        # Calculate error bar length (distance from mean to CI bounds)
+        mean_auroc = age_results[age_bin][0]
+        lower_ci = age_results[age_bin][1]
+        upper_ci = age_results[age_bin][2]
+
+        # Error bar goes from mean to upper CI and mean to lower CI
+        yerr_lower = mean_auroc - lower_ci
+        yerr_upper = upper_ci - mean_auroc
+
+        # Add n= on top of each bar
+        n_samples = len(df_age[df_age["age_bin"] == age_bin])
+        age_performance_table.loc[i] = [f"{int(age_bin.left)}-{int(age_bin.right)}", f"{mean_auroc:.2f} ({lower_ci:.2f}-{upper_ci:.2f})", n_samples]
+        # ax1.text(i, mean_auroc + 0.01, f'n={n_samples}', ha='center', va='bottom')
+
+    # ax1.tick_params(axis='x', rotation=45)
+
+    # sns.barplot(x=list(gender_results.keys()), y=[gender_results[gender][0] for gender in gender_results.keys()], ax=ax2, width=0.3, palette='Greens')
+    for i, gender in enumerate([1.0,2.0]):
+        mean_auroc = gender_results[gender][0]
+        lower_ci = gender_results[gender][1]
+        upper_ci = gender_results[gender][2]
+
+        # Error bar goes from mean to upper CI and mean to lower CI
+        yerr_lower = mean_auroc - lower_ci
+        yerr_upper = upper_ci - mean_auroc
+
+        # Add n= on top of each bar
+        n_samples = len(df_gender_bin)
+        sex_performance_table.loc[i] = [['','Male','Female'][int(gender)], f"{mean_auroc:.2f} ({lower_ci:.2f}-{upper_ci:.2f})", n_samples]
+        # ax2.text(i, mean_auroc + 0.01, f'n={n_samples}', ha='center', va='bottom')
+
+    ## use dfi to save the tables 
+    age_performance_table.set_index('Age Range', inplace=True)
+    sex_performance_table.set_index('Sex', inplace=True)
+
+    dfi.export(age_performance_table, 'biomarker/analysis/anonymized_figure_3d_age.png')
+    dfi.export(sex_performance_table, 'biomarker/analysis/anonymized_figure_3d_sex.png')
+
+
 
 if __name__ == '__main__':
     generate_fairness_analysis_figure(save=True)

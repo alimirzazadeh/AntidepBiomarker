@@ -18,8 +18,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.inspection import permutation_importance
 from tqdm import tqdm
 from ipdb import set_trace as bp
+import sys 
+sys.path.append('./')
+CSV_DIR = 'data/'
 
-CSV_DIR = '../../data/'
 def load_and_prepare_data():
     """
     Load and prepare all datasets for analysis.
@@ -29,11 +31,10 @@ def load_and_prepare_data():
     tuple : (df, df_eeg, labels_model_baseline, model1_cols, model2_cols)
     """
     # Load datasets
-    df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
-    df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
-    # labels = pd.read_csv(os.path.join(CSV_DIR,'rebuttal_nohchsrf_inference_v6emb_3920_all.csv'))
-    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
-    df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
+    df = pd.read_csv(os.path.join(CSV_DIR,'anonymized_df_baseline.csv'))
+    df_eeg = pd.read_csv(os.path.join(CSV_DIR,'anonymized_df_baseline_eeg.csv'))
+    labels = pd.read_csv(os.path.join(CSV_DIR,'anonymized_inference_v6emb_3920_all.csv'))
+    df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'anonymized_antidep_taxonomy_all_datasets_v6.csv'))
     
     # Prepare sleep stage features dataset
     df = df.drop(columns=['dataset'])
@@ -45,15 +46,15 @@ def load_and_prepare_data():
     model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
     # Process our model predictions
-    labels['filename'] = labels['filename'].apply(lambda x: x.split('/')[-1])
+    # labels['filename'] = labels['filename'].apply(lambda x: x.split('/')[-1])
     labels = labels.groupby('filename', as_index=False).agg(
         lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
     )
     
-    # Clean participant IDs across datasets
-    for dataset in ['wsc', 'mros', 'shhs']:
-        mask = labels['dataset'] == dataset
-        labels.loc[mask, 'pid'] = labels.loc[mask, 'pid'].apply(lambda x: x[1:] if isinstance(x, str) and x else x)
+    # # Clean participant IDs across datasets
+    # for dataset in ['wsc', 'mros', 'shhs']:
+    #     mask = labels['dataset'] == dataset
+    #     labels.loc[mask, 'pid'] = labels.loc[mask, 'pid'].apply(lambda x: x[1:] if isinstance(x, str) and x else x)
     
     # Merge with taxonomy data
     labels_model_baseline = pd.merge(labels, df_taxonomy, on='filename', how='inner')

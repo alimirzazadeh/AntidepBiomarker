@@ -14,16 +14,14 @@ import numpy as np
 import pandas as pd
 from ipdb import set_trace as bp
 from sklearn.metrics import roc_auc_score, f1_score, confusion_matrix
-
+import sys 
+sys.path.append('./')
 # Configuration
-# INFERENCE_FILE = '../../data/inference_v6emb_3920_all.csv'
-# INFERENCE_FILE = '../../data/nodulox_inference_v6emb_3920_all.csv'
-INFERENCE_FILE = '../../data/inference_v6emb_3920_all_novenlafaxine.csv'
-
-TAXONOMY_FILE = '../../data/antidep_taxonomy_all_datasets_v6.csv'
+INFERENCE_FILE = 'data/anonymized_inference_v6emb_3920_all.csv'
+TAXONOMY_FILE = 'data/anonymized_antidep_taxonomy_all_datasets_v6.csv'
 
 # Analysis configuration
-EVALUATE_BY_DATASET = True 
+EVALUATE_BY_DATASET = False 
 ONLY_SINGLE_MEDICATION = True
 THRESHOLD = 0.25
 N_BOOTSTRAP = 1000
@@ -68,7 +66,7 @@ def load_and_preprocess_data():
     df = pd.read_csv(INFERENCE_FILE)
     
     # Group by filename and aggregate (mean for numeric, first for non-numeric)
-    df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
+    # df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
     df = df.groupby('filename').agg(
         lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
     )
@@ -76,11 +74,11 @@ def load_and_preprocess_data():
     # Convert logits to probabilities using sigmoid
     df['pred'] = 1 / (1 + np.exp(-df['pred']))
     
-    # Clean patient IDs by removing dataset prefixes
-    df['pid'] = df.apply(
-        lambda x: x['pid'][1:] if x['dataset'] in ['shhs', 'mros', 'wsc'] else x['pid'], 
-        axis=1
-    )
+    # # Clean patient IDs by removing dataset prefixes
+    # df['pid'] = df.apply(
+    #     lambda x: x['pid'][1:] if x['dataset'] in ['shhs', 'mros', 'wsc'] else x['pid'], 
+    #     axis=1
+    # )
     
     # Load and merge taxonomy data
     df_taxonomy = pd.read_csv(TAXONOMY_FILE)
@@ -343,7 +341,7 @@ def main():
             except Exception as e:
                 print(f"Error analyzing {dataset} dataset: {e}")
                 continue
-    bp() 
+
     
     if ONLY_SINGLE_MEDICATION:
         print(f"\nAnalyzing single medications only (threshold = {THRESHOLD})")

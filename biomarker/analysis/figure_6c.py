@@ -8,13 +8,15 @@ import scipy.stats
 from numpy import convolve
 from ipdb import set_trace as bp 
 import random 
+import sys 
+sys.path.append('./')
 # Configuration
 datasets = ['mros','wsc','shhs','cfs']
 num_matches = 3
 age_tolerance = 5 
 
 # File paths
-df = pd.read_csv('../data/master_dataset.csv')
+df = pd.read_csv('data/anonymized_inference_v6emb_3920_all.csv')
 df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
 df = df.groupby('filename').agg('first').reset_index()
@@ -387,18 +389,18 @@ control_pwr_sleep_gt_norm = np.stack(control_pwr_sleep_gt_norm)
 
 
 # Calculate percent differences with bootstrap
-if True:
-    whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
-    whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt, method='percent_diff')
-    print('Mean differnece in percent errors: ', np.mean(np.abs(whole_sleep2 - whole_sleep_gt2)))
-    print('STD of percent errors: ', np.std(np.abs(whole_sleep2 - whole_sleep_gt2)))
-    l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]))
-    print('L1 error (individual level):', l1_error)
-    l1_error_cohort_antidep = np.mean(np.abs(np.mean(antidep_pwr_sleep_gt_norm,0) - np.mean(control_pwr_sleep,0)))
-    l1_error_cohort_control = np.mean(np.abs(np.mean(antidep_pwr_sleep,0) - np.mean(control_pwr_sleep_gt_norm,0)))
-    print('L1 error (cohort level antidep):', l1_error_cohort_antidep)
-    print('L1 error (cohort level control):', l1_error_cohort_control)
-bp() 
+# if True:
+#     whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
+#     whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt, method='percent_diff')
+#     print('Mean differnece in percent errors: ', np.mean(np.abs(whole_sleep2 - whole_sleep_gt2)))
+#     print('STD of percent errors: ', np.std(np.abs(whole_sleep2 - whole_sleep_gt2)))
+#     l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]))
+#     print('L1 error (individual level):', l1_error)
+#     l1_error_cohort_antidep = np.mean(np.abs(np.mean(antidep_pwr_sleep_gt_norm,0) - np.mean(control_pwr_sleep,0)))
+#     l1_error_cohort_control = np.mean(np.abs(np.mean(antidep_pwr_sleep,0) - np.mean(control_pwr_sleep_gt_norm,0)))
+#     print('L1 error (cohort level antidep):', l1_error_cohort_antidep)
+#     print('L1 error (cohort level control):', l1_error_cohort_control)
+
 if True:
     FONT_SIZE = 12
     whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
@@ -441,7 +443,7 @@ if True:
     ax.set_xlim(-0.01, 256.01)
     # ax[1].set_xlim(-0.01, 256.01)
     # ax[2].set_xlim(-0.01, 256.01)
-    plt.savefig(f'check_reconstruction_error_v5_simplified.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'biomarker/analysis/figure_6c.png', dpi=300, bbox_inches='tight')
     plt.close()
 bp() 
 print('done')

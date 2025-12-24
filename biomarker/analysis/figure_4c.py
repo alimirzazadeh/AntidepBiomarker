@@ -20,15 +20,14 @@ def get_significance_stars(pval):
     
 def generate_osa_figure(save=True, ax=None):
     CSV_DIR = 'data/'
-    INFERENCE_FILE = os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv')
-    ahis = pd.read_csv(os.path.join(CSV_DIR,'shhs_mros_cfs_wsc_ahi.csv'))
+    INFERENCE_FILE = os.path.join(CSV_DIR,'anonymized_inference_v6emb_3920_all.csv')
+    ahis = pd.read_csv(os.path.join(CSV_DIR,'anonymized_shhs_mros_cfs_wsc_ahi.csv'))
     df = pd.read_csv(INFERENCE_FILE)
 
-    df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
     df = df.groupby('filename').agg(
         lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
     )
-    df_tax = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
+    df_tax = pd.read_csv(os.path.join(CSV_DIR,'anonymized_antidep_taxonomy_all_datasets_v6.csv'))
     df = pd.merge(df, df_tax, on='filename', how='inner')
     df['is_tca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('T') or ',T' in x else 0)
     df['is_ntca'] = df['taxonomy'].apply(lambda x: 1 if x.startswith('N') or ',N' in x else 0)
@@ -38,10 +37,6 @@ def generate_osa_figure(save=True, ax=None):
     df = df[(df['is_snri'] == 1) | (df['is_ssri'] == 1) | (df['is_ntca'] == 1) | (df['is_tca'] == 1) | (df['label'] == 0)]
     # Convert logits to probabilities using sigmoid
     df['pred'] = 1 / (1 + np.exp(-df['pred']))
-    df['pid'] = df.apply(
-        lambda x: x['pid'][1:] if x['dataset'] in ['shhs', 'mros', 'wsc'] else x['pid'], 
-        axis=1
-    )
 
     print(df.shape)
     print(ahis.shape)
@@ -172,7 +167,7 @@ def generate_osa_figure(save=True, ax=None):
 
     if save:
         plt.tight_layout()
-        plt.savefig('osa_analysis_overall_v2.png', dpi=300, bbox_inches='tight')
+        plt.savefig('biomarker/analysis/anonymized_figure_4c.png', dpi=300, bbox_inches='tight')
     return ax
 
 

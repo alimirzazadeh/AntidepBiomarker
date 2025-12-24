@@ -18,6 +18,7 @@ from scipy.signal import medfilt
 from scipy.ndimage import gaussian_filter1d
 from ipdb import set_trace as bp 
 
+raise NotImplementedError("Note: This file requires the MIT dataset, which is not provided due to IRB.")
 # Configuration
 EXP_FOLDER = '../../data/'
 

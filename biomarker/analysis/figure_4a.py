@@ -44,6 +44,9 @@ import scipy
 EXP_FOLDER = 'data/'
 font_size = 12
 
+def process_mit_medications():
+    raise NotImplementedError("MIT medications not provided due to IRB")
+
 def calculate_pval_effect_size(x,y,equal_var=False):
     t,p=scipy.stats.ttest_ind(x,y,equal_var=equal_var)
     nx,ny=len(x),len(y)
@@ -78,16 +81,16 @@ def get_effect_size_crosses(effect_size):
 def load_and_preprocess_data():
     """Load and preprocess the main inference data."""
     # Load main inference data
-    df = pd.read_csv(os.path.join(EXP_FOLDER, 'inference_v6emb_3920_all.csv'))
+    df = pd.read_csv(os.path.join(EXP_FOLDER, 'anonymized_inference_v6emb_3920_all.csv'))
     # Filter to only include MROS and WSC datasets
     df = df[df['dataset'].isin(['mros', 'wsc','rf'])].copy() 
     # Apply sigmoid transformation to predictions
     df['pred'] = 1 / (1 + np.exp(-df['pred'])) 
     
     # Extract filename and clean patient IDs
-    df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
-    df['pid'] = df.apply(lambda x: x['pid'] if x['dataset'] != 'wsc' else x['pid'][1:], axis=1)
-    df['pid'] = df.apply(lambda x: x['pid'] if x['dataset'] != 'mros' else x['pid'][1:], axis=1)
+    # df['filename'] = df['filepath'].apply(lambda x: x.split('/')[-1])
+    # df['pid'] = df.apply(lambda x: x['pid'] if x['dataset'] != 'wsc' else x['pid'][1:], axis=1)
+    # df['pid'] = df.apply(lambda x: x['pid'] if x['dataset'] != 'mros' else x['pid'][1:], axis=1)
     
     # Aggregate by filename (take mean for numeric, first value for non-numeric)
     df = df.groupby('filename').agg(lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0])
@@ -95,74 +98,9 @@ def load_and_preprocess_data():
 
     return df
 
-def process_mit_medications(EXP_FOLDER = 'data/'):
-    """Add taxonomy information to the dataframe."""
-    df_taxonomy = pd.read_csv(os.path.join(EXP_FOLDER,'master_dataset.csv'))
-    df_taxonomy = df_taxonomy[df_taxonomy['dataset'] == 'rf'].copy()
-    df_taxonomy = df_taxonomy[['filename', 'taxonomy','date','pid']]
-
-    df_taxonomy['date'] = pd.to_datetime(df_taxonomy['date'])
-    df_rf = pd.read_csv(os.path.join(EXP_FOLDER, 'mit_psychotropics.csv'))
-    df_rf.rename(columns={'Unnamed: 0': 'pid'}, inplace=True)
-    def get_benzos(pid, date):
-        if pid in ['NIHYA889LELYV','NIHFW795KLATW']:
-            return True if (pid == 'NIHYA889LELYV' and date < pd.to_datetime('2019-09-15')) or (pid == 'NIHFW795KLATW' and date > pd.to_datetime('2021-01-01')) else False
-        else:
-            if  pid not in df_rf['pid'].values:
-                return False
-            else:
-                return df_rf[df_rf['pid'] == pid]['Benzodiazepines'].item()
-    def get_antipsycho(pid, date):
-        # print(type(pid), type(df_rf['pid'].values))
-        if  pid not in df_rf['pid'].values:
-                return False
-        else:
-                return df_rf[df_rf['pid'] == pid]['Antipsychotics'].item()
-    def get_anticonvuls(pid, date):
-        if pid in ['NIHKH638RXUVN']:
-            return True if (pid == 'NIHKH638RXUVN' and date < pd.to_datetime('2021-03-20')) and (date > pd.to_datetime('2021-02-20')) else False
-        else:
-            if  pid not in df_rf['pid'].values:
-                return False
-            else:
-                return df_rf[df_rf['pid'] == pid]['Anticonvulsants'].item()
-    def get_hypnotics(pid, date):
-            if  pid not in df_rf['pid'].values:
-                return False
-            else:
-                return df_rf[df_rf['pid'] == pid]['Hypnotics'].item()
-    def get_anticholinergics(pid, date):
-        if pid in ['NIHPX213JXJZC','NIHYA889LELYV']:
-            return True if (pid == 'NIHPX213JXJZC' and date > pd.to_datetime('2020-07-14')) or (pid == 'NIHYA889LELYV' and date < pd.to_datetime('2020-10-01')) else False
-        else:
-            if  pid not in df_rf['pid'].values:
-                return False
-            else:
-                return df_rf[df_rf['pid'] == pid]['Anticholinergics'].item()
-    def get_stimulants(pid, date):
-        if  pid not in df_rf['pid'].values:
-                return False
-        else:
-                return df_rf[df_rf['pid'] == pid]['Stimulants'].item()
-    df_taxonomy['pid'] = df_taxonomy['pid'].astype(str)
-    df_taxonomy['benzos'] = df_taxonomy.apply(lambda x: get_benzos(x['pid'],x['date']), axis=1)
-    df_taxonomy['antipsycho'] = df_taxonomy.apply(lambda x: get_antipsycho(x['pid'],x['date']), axis=1)
-    df_taxonomy['convuls'] = df_taxonomy.apply(lambda x: get_anticonvuls(x['pid'],x['date']), axis=1)
-    df_taxonomy['hypnotics'] = df_taxonomy.apply(lambda x: get_hypnotics(x['pid'],x['date']), axis=1)
-    df_taxonomy['anticholinergics'] = df_taxonomy.apply(lambda x: get_anticholinergics(x['pid'],x['date']), axis=1)
-    df_taxonomy['stimulants'] = df_taxonomy.apply(lambda x: get_stimulants(x['pid'],x['date']), axis=1)
-    print('Stimulants: ', df_taxonomy[df_taxonomy['stimulants'] == True]['pid'].unique())
-    print('Anticholinergics: ', df_taxonomy[df_taxonomy['anticholinergics'] == True]['pid'].unique())
-    print('Hypnotics: ', df_taxonomy[df_taxonomy['hypnotics'] == True]['pid'].unique())
-    print('Convuls: ', df_taxonomy[df_taxonomy['convuls'] == True]['pid'].unique())
-    print('Antipsycho: ', df_taxonomy[df_taxonomy['antipsycho'] == True]['pid'].unique())
-    print('Benzos: ', df_taxonomy[df_taxonomy['benzos'] == True]['pid'].unique())
-    return df_taxonomy[['filename', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants']]
-    
-
 def add_taxonomy_data(df):
     """Add taxonomy information to the dataframe."""
-    df_taxonomy = pd.read_csv(os.path.join(EXP_FOLDER,'antidep_taxonomy_all_datasets_v6.csv'))
+    df_taxonomy = pd.read_csv(os.path.join(EXP_FOLDER,'anonymized_antidep_taxonomy_all_datasets_v6.csv'))
     df_taxonomy = df_taxonomy[['filename', 'taxonomy']]
     df = pd.merge(df, df_taxonomy, on='filename', how='inner')
     return df
@@ -170,8 +108,8 @@ def add_taxonomy_data(df):
 def process_mros_medications(EXP_FOLDER = 'data/'):
     """Process MROS medication data and create medication flags."""
     # Load MROS medication data
-    df_mros_meds = pd.read_csv(os.path.join(EXP_FOLDER,'mros2-dataset-augmented-live.csv'))
-    df_mros1_meds = pd.read_csv(os.path.join(EXP_FOLDER,'mros1-dataset-augmented-live.csv'))
+    df_mros_meds = pd.read_csv(os.path.join(EXP_FOLDER,'anonymized_mros2-dataset-augmented-live.csv'))
+    df_mros1_meds = pd.read_csv(os.path.join(EXP_FOLDER,'anonymized_mros1-dataset-augmented-live.csv'))
     df_mros_meds = pd.concat([df_mros_meds, df_mros1_meds])
     
     # Define medication categories with their corresponding variable names
@@ -196,7 +134,7 @@ def process_mros_medications(EXP_FOLDER = 'data/'):
 
 def process_wsc_medications(EXP_FOLDER = 'data/'):
     """Process WSC medication data and create medication flags."""
-    df_wsc_meds = pd.read_csv(os.path.join(EXP_FOLDER,'wsc-dataset-0.7.0.csv'))
+    df_wsc_meds = pd.read_csv(os.path.join(EXP_FOLDER,'anonymized_wsc-dataset-0.7.0.csv'))
     
     # Define medication categories with their corresponding WSC variable names
     medication_categories = {
@@ -208,11 +146,11 @@ def process_wsc_medications(EXP_FOLDER = 'data/'):
         'anticholinergics': ['dr219','dr221','dr235','dr239','dr207','dr229','dr783','dr854','dr759','dr717','dr256']
     }
     
-    # Create filename for WSC data
-    df_wsc_meds['filename'] = df_wsc_meds.apply(
-        lambda x: f'wsc-visit{x["wsc_vst"]}-{x["wsc_id"]}-nsrr.npz', 
-        axis=1
-    )
+    # # Create filename for WSC data
+    # df_wsc_meds['filename'] = df_wsc_meds.apply(
+    #     lambda x: f'wsc-visit{x["wsc_vst"]}-{x["wsc_id"]}-nsrr.npz', 
+    #     axis=1
+    # )
     
     # Create binary flags for each medication category
     for category, medications in medication_categories.items():
@@ -380,12 +318,13 @@ def generate_other_medications_figure(save=True, ax=None):
     df_mros_meds = process_mros_medications()
     df_wsc_meds = process_wsc_medications()
     
-    print("Processing MIT medication data...")
-    df_mit_meds = process_mit_medications()
+    # print("Processing MIT medication data...")
+    # df_mit_meds = process_mit_medications()
     
     # Combine medication data
-    df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
-
+    # df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
+    df_other = pd.concat([df_mros_meds, df_wsc_meds])
+    
     df = df.merge(df_other, on='filename', how='inner')
     df = df[['filename', 'taxonomy', 'pred', 'pid', 'label', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']].copy()
     
@@ -399,7 +338,7 @@ def generate_other_medications_figure(save=True, ax=None):
     groups = extract_medication_groups(df)
     
     print("Creating visualization...")
-    save_path = 'biomarker/analysis/figure_4d.png'
+    save_path = 'biomarker/analysis/anonymized_figure_4a.png'
     if save:
         create_visualization(groups, save_path=save_path, save=True)
     else:
