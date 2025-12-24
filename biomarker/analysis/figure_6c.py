@@ -16,7 +16,7 @@ num_matches = 3
 age_tolerance = 5 
 
 # File paths
-df = pd.read_csv('data/inference_v6emb_3920_all.csv')
+df = pd.read_csv('data/anonymized_inference_v6emb_3920_all.csv')
 df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
 df = df.groupby('filename').agg('first').reset_index()
@@ -256,78 +256,62 @@ def naive_power_post_onset(mage, stage, minutes=60, mean=True, which_stage=[1,2,
 
 
 
-CONTROL_MATCHING = False 
-# Create age and gender matched control cohort
-if CONTROL_MATCHING:
-    mappings = {}
-    for i, row in tqdm(df[df['label'] == 1].iterrows()):
-        age = row['mit_age']
-        gender = row['mit_gender']
-        dataset = row['dataset']
-        valid_matches = df[(df['label'] == 0) * (df['dataset'] == dataset) * (df['mit_gender'] == gender) * 
-                        (df['mit_age'] >= age - age_tolerance) * (df['mit_age'] <= age + age_tolerance)]
-        if len(valid_matches) == 0:
-            print(f'No valid matches for {row["filename"]} in {dataset}')
-            continue 
-        valid_matches = valid_matches.sample(num_matches)
-        mappings[row['filename']] = valid_matches['filename'].tolist()
 
-    all_controls = [item for sublist in mappings.values() for item in sublist]
-    all_antideps = list(mappings.keys())
-    print(len(all_controls), len(all_antideps))
-    print('done')
-
-else:
-    all_controls = df[df['label'] == 0]['filename'].tolist()
-    all_antideps = df[df['label'] == 1]['filename'].tolist()
+all_controls = df[df['label'] == 0]['filename'].tolist()
+all_antideps = df[df['label'] == 1]['filename'].tolist()
 
 
 # Initialize data containers
 control_pwr_sleep = [] 
 antidep_pwr_sleep = [] 
-control_pwr_sleep_l1 = [] 
+
 
 # Process antidepressant files
 
-for file in tqdm(all_antideps):
-    dataset = get_dataset(file)
-    if dataset != 'wsc':
-        fold = int(df[df['filename'] == file]['fold'].values[0])
-    else:
-        fold = int(random.randint(0, 3))
-    mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
-    
-    if mg is None or st is None:
-        continue
-    
-    
-    mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
-    mage_gt_norm = normalize_gt(mage_gt, dataset)
-    
-    if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
-        antidep_pwr_sleep.append(mage2_sleep)
+if os.path.exists('data/anonymized_antidep_pwr_sleep.npy'):
+    antidep_pwr_sleep = np.load('data/anonymized_antidep_pwr_sleep.npy')
+else:
+    for file in tqdm(all_antideps):
+        dataset = get_dataset(file)
+        if dataset != 'wsc':
+            fold = int(df[df['filename'] == file]['fold'].values[0])
+        else:
+            fold = int(random.randint(0, 3))
+        mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
+        
+        if mg is None or st is None:
+            continue
+        
+        
+        mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
+        
+        if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
+            antidep_pwr_sleep.append(mage2_sleep)
+    antidep_pwr_sleep = np.stack(antidep_pwr_sleep)
+    np.save('data/anonymized_antidep_pwr_sleep.npy',antidep_pwr_sleep)
 
 # Process control files
-for file in tqdm(all_controls):
-    dataset = get_dataset(file)
-    if dataset != 'wsc':
-        fold = int(df[df['filename'] == file]['fold'].values[0])
-    else:
-        fold = int(random.randint(0, 3))
-    mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
-    
-    if mg is None or st is None:
-        continue
+if os.path.exists('data/anonymized_control_pwr_sleep.npy'):
+    control_pwr_sleep = np.load('data/anonymized_control_pwr_sleep.npy')
+else:
+    for file in tqdm(all_controls):
+        dataset = get_dataset(file)
+        if dataset != 'wsc':
+            fold = int(df[df['filename'] == file]['fold'].values[0])
+        else:
+            fold = int(random.randint(0, 3))
+        mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
+        
+        if mg is None or st is None:
+            continue
 
-    mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
-    mage_gt_norm = normalize_gt(mage_gt, dataset)
-    if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
-        control_pwr_sleep.append(mage2_sleep)
-# Convert to numpy arrays
-control_pwr_sleep = np.stack(control_pwr_sleep)
-antidep_pwr_sleep = np.stack(antidep_pwr_sleep)
+        mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
+        if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
+            control_pwr_sleep.append(mage2_sleep)
 
-bp() 
+    control_pwr_sleep = np.stack(control_pwr_sleep)
+    np.save('data/anonymized_control_pwr_sleep.npy',control_pwr_sleep)
+
 
 if True:
     FONT_SIZE = 12
@@ -346,7 +330,7 @@ if True:
     ax.set_xticklabels(np.arange(0, 33, 4))
     ax.set_ylim(-5,25)
     ax.set_xlim(-0.01, 256.01)
-    plt.savefig(f'biomarker/analysis/figure_6c.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'biomarker/analysis/anonymized_figure_6c.png', dpi=300, bbox_inches='tight')
     plt.close()
 
 print('done')
