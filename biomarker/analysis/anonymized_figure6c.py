@@ -21,7 +21,7 @@ df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
 df = df.groupby('filename').agg('first').reset_index()
 print(df.shape)
-bp() 
+
 
 
 def normalize_gt(eeg, dataset ):
@@ -312,6 +312,7 @@ else:
     control_pwr_sleep = np.stack(control_pwr_sleep)
     np.save('data/anonymized_control_pwr_sleep.npy',control_pwr_sleep)
 
+bp() 
 
 if True:
     FONT_SIZE = 12

@@ -14,12 +14,12 @@ num_matches = 3
 age_tolerance = 5 
 
 # File paths
-df = pd.read_csv('../data/master_dataset.csv')
+df = pd.read_csv('../../data/master_dataset.csv')
 df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
 df = df.groupby('filename').agg('first').reset_index()
 
-bp() 
+
 print(df.shape)
 
 # def get_post_onset_trend(mage, stage, which_stage=2):
