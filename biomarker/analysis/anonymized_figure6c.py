@@ -259,7 +259,10 @@ def naive_power_post_onset(mage, stage, minutes=60, mean=True, which_stage=[1,2,
 
 all_controls = df[df['label'] == 0]['filename'].tolist()
 all_antideps = df[df['label'] == 1]['filename'].tolist()
-
+bp() 
+all_controls_datasets = df[df['label'] == 0]['dataset'].tolist()
+all_antideps_datasets = df[df['label'] == 1]['dataset'].tolist()
+bp() 
 
 # Initialize data containers
 control_pwr_sleep = [] 
