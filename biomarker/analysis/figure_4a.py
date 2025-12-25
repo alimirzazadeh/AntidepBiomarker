@@ -151,6 +151,7 @@ def process_mit_medications(EXP_FOLDER = 'data/'):
     df_taxonomy['hypnotics'] = df_taxonomy.apply(lambda x: get_hypnotics(x['pid'],x['date']), axis=1)
     df_taxonomy['anticholinergics'] = df_taxonomy.apply(lambda x: get_anticholinergics(x['pid'],x['date']), axis=1)
     df_taxonomy['stimulants'] = df_taxonomy.apply(lambda x: get_stimulants(x['pid'],x['date']), axis=1)
+    df_taxonomy.fillna(False, inplace=True)
     print('Stimulants: ', df_taxonomy[df_taxonomy['stimulants'] == True]['pid'].unique())
     print('Anticholinergics: ', df_taxonomy[df_taxonomy['anticholinergics'] == True]['pid'].unique())
     print('Hypnotics: ', df_taxonomy[df_taxonomy['hypnotics'] == True]['pid'].unique())
@@ -389,7 +390,7 @@ def generate_other_medications_figure(save=True, ax=None):
     df = df.merge(df_other, on='filename', how='inner')
     df = df[['filename', 'taxonomy', 'pred', 'pid', 'label', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']].copy()
     
-    df = df.groupby(['pid', 'taxonomy', 'label','benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']).agg({'pred': 'mean'}).reset_index()
+    df = df.groupby(['pid',  'label','benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']).agg({'pred': 'mean'}).reset_index()
     print(df[df['dataset'] == 'mros'].shape[0])
     print(df[df['dataset'] == 'wsc'].shape[0])
     print(df[df['dataset'] == 'rf'].shape[0])
@@ -399,7 +400,7 @@ def generate_other_medications_figure(save=True, ax=None):
     groups = extract_medication_groups(df)
     
     print("Creating visualization...")
-    save_path = 'biomarker/analysis/figure_4d.png'
+    save_path = 'biomarker/analysis/figure_4a.png'
     if save:
         create_visualization(groups, save_path=save_path, save=True)
     else:

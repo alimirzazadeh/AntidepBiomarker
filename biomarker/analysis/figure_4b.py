@@ -4,13 +4,13 @@ import numpy as np
 from ipdb import set_trace as bp
 import sys 
 sys.path.append('./')
-from biomarker.analysis.figure_4d import process_mros_medications, process_wsc_medications, process_mit_medications
+from biomarker.analysis.figure_4a import process_mros_medications, process_wsc_medications, process_mit_medications
 CSV_DIR = 'data/'
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import ttest_ind
 
-ANONYMIZED = TRUE 
+ANONYMIZED = False 
 
 SUBTYPE = False
 font_size = 12

@@ -2,11 +2,11 @@ import sys
 sys.path.append('./')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from supplemental_figures.osa_analysis_v2 import generate_osa_figure
-from biomarker.analysis.figure_4d import generate_other_medications_figure
-from supplemental_figures.check_mdd_confound_v2 import generate_mdd_confound_figure
-from supplemental_figures.fairness_analysis import generate_fairness_analysis_figure
-from supplemental_figures.cotherapy_analysis import generate_cotherapy_analysis_figure
+from biomarker.analysis.figure_4c import generate_osa_figure
+from biomarker.analysis.figure_4a import generate_other_medications_figure
+from biomarker.analysis.figure_4e import generate_mdd_confound_figure
+from biomarker.analysis.figure_4d import generate_fairness_analysis_figure
+from biomarker.analysis.figure_4b import generate_cotherapy_analysis_figure
 
 font_size = 16
 def reset_font_size():
@@ -73,5 +73,5 @@ ax02.set_title('Robustness to Sleep Apnea', fontsize=font_size)
 
 plt.tight_layout()
 plt.subplots_adjust(hspace=0.47, wspace=0.35) ## was 0.33 before 
-plt.savefig('biomarker/analysis/figure_7_v4.png', dpi=600, bbox_inches='tight')
+plt.savefig('biomarker/analysis/figure_4.png', dpi=600, bbox_inches='tight')
 print('Done')
