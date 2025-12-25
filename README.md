@@ -1,22 +1,24 @@
 # AntidepBiomarker
 
-This repository contains the code and analysis pipeline for the paper on antidepressant response biomarkers derived from sleep cycle and EEG data.
+This repository contains the following:
+1. Executable model which takes in a breathing signal and outputs a score for antidepressant use, and an example positive and negative breathing signal 
+
+2. Anonymized data tables for recreating model results (excluding MIT dataset due to IRB)
+
+3. Scripts to generate all results and figures in the manuscript.
 
 ## Overview
 
 The pipeline consists of several analysis components:
-- Sleep cycle feature extraction and analysis
-- Ground truth EEG analysis
+- Sleep stage analysis
 - Baseline model comparisons
 - Biomarker analysis and visualization
-- Model training and inference
+- Model inference
 
 ## Prerequisites
 
 - Python 3.10
-- R (for sleep cycle processing)
 - Required Python packages (see requirements.txt if available)
-- Access to sleep stage data, EEG data, and associated labels
 
 
 ## System requirements: 
@@ -40,49 +42,19 @@ matplotlib==3.7.0
 - Install Time: 1-2hrs
 - Installation Instructions: 
 1. Install the necessary pip libraries listed above on a valid python installation. 
-2. Acquire and download data, place in data folder 
-3. Run all analyses scripts, as needed. Support for out-of-box compiled AI Biomarker model in development. 
+2. Run all analyses scripts, as needed.
 - Excepted Output: 
+Model inference:
+The script outputs a single model score z between 0 and 1, with 1 meaning high likelihood of antidepressant use. 
+Analyses scripts:
 PNG files with the same file name as the python file are created. If data creation, appropriate csv is created in the data folder 
 Expected Run Time for Analyses: < 30 minutes
 - How to Run: 
-Choose appropriate file. Synthetic data csv is provided in the data subfolder. Access to real data must be requested and follow appropriate Data Use Agreement Protocols. 
+Choose appropriate file. Anonymized data csv is provided in the data subfolder. Access to MIT data is restricted due to IRB restrictions. 
 
 ## Pipeline Execution
 
-### 1. Sleep Cycle Analysis
 
-To generate Figure 2 and related sleep cycle analyses:
-
-1. **Generate sleep cycle features:**
-   ```bash
-   # First, run the R script for each dataset individually
-   Rscript production_sleep_cycle_official.R
-   
-   # Concatenate all dataset outputs into all_dataset_sleepcycle.csv
-   ```
-
-2. **Process sleep cycle features:**
-   ```bash
-   python process_sleep_cycle_features.py
-   ```
-   - **Input:** `all_dataset_sleepcycle.csv`, `labels.csv`, sleep stage data
-   - **Output:** `cycle_calculations_official.csv`
-
-3. **Generate Figure 2:**
-   ```bash
-   python figure_2.py
-   ```
-   - **Input:** `cycle_calculations_official.csv`
-
-### 2. Ground Truth EEG Analysis
-
-To generate Figure 3:
-
-```bash
-python figure_3.py
-```
-- **Input:** `cycle_calculations_official.csv`, `labels.csv`, sleep stage data, `c4_m1_multitaper` EEG data
 
 ### 3. Baseline Model Comparisons
 
