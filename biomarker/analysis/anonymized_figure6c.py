@@ -16,7 +16,7 @@ num_matches = 3
 age_tolerance = 5 
 
 # File paths
-df = pd.read_csv('data/anonymized_inference_v6emb_3920_all.csv')
+df = pd.read_csv('data/inference_v6emb_3920_all.csv')
 df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
 df = df.groupby('filename').agg('first').reset_index()
@@ -259,10 +259,7 @@ def naive_power_post_onset(mage, stage, minutes=60, mean=True, which_stage=[1,2,
 
 all_controls = df[df['label'] == 0]['filename'].tolist()
 all_antideps = df[df['label'] == 1]['filename'].tolist()
-bp() 
-all_controls_datasets = df[df['label'] == 0]['dataset'].tolist()
-all_antideps_datasets = df[df['label'] == 1]['dataset'].tolist()
-bp() 
+
 
 # Initialize data containers
 control_pwr_sleep = [] 
@@ -271,7 +268,7 @@ antidep_pwr_sleep = []
 
 # Process antidepressant files
 
-if os.path.exists('data/anonymized_antidep_pwr_sleep.npy'):
+if False: #os.path.exists('data/anonymized_antidep_pwr_sleep.npy'):
     antidep_pwr_sleep = np.load('data/anonymized_antidep_pwr_sleep.npy')
 else:
     for file in tqdm(all_antideps):
@@ -294,7 +291,7 @@ else:
     np.save('data/anonymized_antidep_pwr_sleep.npy',antidep_pwr_sleep)
 
 # Process control files
-if os.path.exists('data/anonymized_control_pwr_sleep.npy'):
+if False: #os.path.exists('data/anonymized_control_pwr_sleep.npy'):
     control_pwr_sleep = np.load('data/anonymized_control_pwr_sleep.npy')
 else:
     for file in tqdm(all_controls):
