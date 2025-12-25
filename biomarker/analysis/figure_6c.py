@@ -7,15 +7,130 @@ from tqdm import tqdm
 import scipy.stats
 from numpy import convolve
 from ipdb import set_trace as bp 
-
+import random 
 # Configuration
 datasets = ['mros','wsc','shhs','cfs']
 num_matches = 3
 age_tolerance = 5 
 
 # File paths
-df = pd.read_csv('~/2023/SIMON/Sleep-Research/temp_analysis/labels.csv')
+df = pd.read_csv('../../data/master_dataset.csv')
+df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
+df = df.groupby('filename').agg('first').reset_index()
+
+
+print(df.shape)
+
+# def get_post_onset_trend(mage, stage, which_stage=2):
+#     if type(which_stage) is list:
+#         is_n2 = np.zeros_like(stage).astype(bool)
+#         for stg in which_stage:
+#             is_n2 = is_n2 + (stage == stg)
+#     else:    
+#         is_n2 = (stage == which_stage)
+
+#     if len(stage) == 0 or 2 not in stage:
+#         return None
+#     onset_idx = np.argwhere(stage > 0)[0][0]
+
+#     if len(stage) > onset_idx + 6 * 60 * 2:
+#         stage = stage[onset_idx:onset_idx + 6*60*2]
+#         mage = mage[:, onset_idx:onset_idx + 6*60*2]
+#         is_n2 = is_n2[onset_idx:onset_idx + 6*60*2]
+#     else:
+#         stage = stage[onset_idx:]
+#         mage = mage[:, onset_idx:]
+#         is_n2 = is_n2[onset_idx:]
+            
+#     output = np.zeros((256, 6 * 60 * 2))
+#     output[:] = np.nan 
+#     res = mage[:, :len(stage)]
+#     is_n2 = is_n2[:len(stage)]
+#     res[:, ~is_n2] = np.nan 
+#     output[:, :len(stage)] = res
+#     return output 
+
+def normalize_gt(eeg, dataset ):
+    aligned_stats = {
+    "bwh": {
+        "mean": -119.81631919400787,
+        "std": 9.759356123639623
+    },
+    "ccshs": {
+        "mean": -121.27895213781851,
+        "std": 9.40345097820264
+    },
+    "cfs": {
+        "mean": -121.19160358663257,
+        "std": 9.59165062387462
+    },
+    "chat1": {
+        "mean": -113.50761420277698,
+        "std": 9.08179307747247
+    },
+    "chat2": {
+        "mean": -114.89264007606901,
+        "std": 9.716837725098982
+    },
+    "chat3": {
+        "mean": -116.87718779950092,
+        "std": 9.43450530792485
+    },
+    "mesa": {
+        "mean": -122.68688353498257,
+        "std": 9.60216508752495
+    },
+    "mgh": {
+        "mean": -119.62848254989814,
+        "std": 9.871857334916152
+    },
+    "mgh2": {
+        "mean": -120.55325045281961,
+        "std": 9.842009745631655
+    },
+    "mros1": {
+        "mean": -120.98222843034381,
+        "std": 9.363104704238623
+    },
+    "mros2": {
+        "mean": -118.22438446922463,
+        "std": 10.073216867662019
+    },
+    "p18c": {
+        "mean": -120.74857898328052,
+        "std": 10.054891007302812
+    },
+    "shhs1": {
+        "mean": -121.10152070581054,
+        "std": 9.97620536159769
+    },
+    "shhs2": {
+        "mean": -121.54034787678135,
+        "std": 9.872548910735638
+    },
+    "sof": {
+        "mean": -119.19408423981945,
+        "std": 10.18193411752617
+    },
+    "stages": {
+        "mean": -118.39168242635253,
+        "std": 9.337185496757476
+    },
+    "wsc": {
+        "mean": -119.98596507662205,
+        "std": 9.550418675015477
+    }
+    }
+    target_mean = -120.
+    target_std = 7.
+    eeg = (eeg - aligned_stats[dataset]['mean']) / aligned_stats[dataset]['std'] * target_std + target_mean
+    eeg = np.clip(eeg, -140, -90)
+    eeg = ((eeg + 140) / 50).astype(np.float32)
+    eeg = (eeg - 0.5) / 0.5
+    return eeg
+
+## fix the fold issue 
 
 def pearsonr(x, y, return_pval=False):
     nans = np.isnan(x) | np.isnan(y)
@@ -33,54 +148,6 @@ def smooth(arr, n):
     padded_arr = np.pad(arr, pad_width, mode='edge')
     smoothed = np.convolve(padded_arr, np.ones(n)/n, mode='valid')
     return smoothed
-
-def get_post_onset_trend(mage, stage, which_stage=2):
-    if type(which_stage) is list:
-        is_n2 = np.zeros_like(stage).astype(bool)
-        for stg in which_stage:
-            is_n2 = is_n2 + (stage == stg)
-    else:    
-        is_n2 = (stage == which_stage)
-
-    if len(stage) == 0 or 2 not in stage:
-        return None
-    onset_idx = np.argwhere(stage > 0)[0][0]
-
-    if len(stage) > onset_idx + 6 * 60 * 2:
-        stage = stage[onset_idx:onset_idx + 6*60*2]
-        mage = mage[:, onset_idx:onset_idx + 6*60*2]
-        is_n2 = is_n2[onset_idx:onset_idx + 6*60*2]
-    else:
-        stage = stage[onset_idx:]
-        mage = mage[:, onset_idx:]
-        is_n2 = is_n2[onset_idx:]
-            
-    output = np.zeros((256, 6 * 60 * 2))
-    output[:] = np.nan 
-    res = mage[:, :len(stage)]
-    is_n2 = is_n2[:len(stage)]
-    res[:, ~is_n2] = np.nan 
-    output[:, :len(stage)] = res
-    return output 
-
-def get_rem_supress(filename, dataset='stages', threshold=120):
-    if '/' in filename:
-        filename = filename.split('/')[-1]
-    STAGE_PREFIX = f'/data/netmit/wifall/ADetect/data/{dataset}/stage/'
-    stage = np.load(os.path.join(STAGE_PREFIX, filename))
-    stage = stage['data'][::int(30*stage['fs'])]
-    stage = process_stages(stage)
-    if 4 not in stage:
-        return True
-    return (np.argwhere(stage == 4)[0][0] - np.argwhere(stage > 0)[0][0]) > (threshold * 2)
-
-
-def get_rem_latency(stage):
-    try:
-        rem_latency = np.argwhere(stage == 4)[0][0] - np.argwhere(stage > 0)[0][0]
-        return rem_latency / 2
-    except:
-        return np.nan
 
 def get_dataset(file):
     if 'cfs' in file:
@@ -106,70 +173,42 @@ def process_stages(stages):
     mapping = np.array([0, 1, 2, 3, 3, 4, 0, 0, 0, 0, 0], np.int64)
     return mapping[stages]
 
-def get_mage_stage(filename, gt=True, dataset='stages'):
+def get_mage_stage(filename, gt=True, dataset=None, fold=0):
     filename = filename.split('/')[-1]
     STAGE_PREFIX = f'/data/netmit/wifall/ADetect/data/{dataset}/stage/'
-    MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/c4_m1_multitaper/{dataset}/'
-    key = 'data'
+    MAGE_PREFIX = f'/data/netmit/sleep_lab/filtered/MAGE/{dataset}_new/mage/cv_{fold}/'
+    if gt:
+        gt_path = '/data/netmit/sleep_lab/filtered/MAGE/DATASET/c4_m1_multitaper'
+        ## this gt path is older, but used for the paper:
+        # gt_path =f'/data/netmit/sleep_lab/filtered/c4_m1_multitaper/DATASET/'
+        gt_dir = gt_path.replace('DATASET',dataset)
+        if not os.path.exists(gt_dir):
+            gt_dir = gt_path.replace('DATASET',dataset+'_new')
+        if not os.path.exists(gt_dir):
+            print(f'{dataset} not found')
+            return None, None, None
+        mage_gt = np.load(os.path.join(gt_dir, filename))['data']
+        # mage_gt = normalize_gt(mage_gt, dataset)
+    key = 'pred'
     
     stage = np.load(os.path.join(STAGE_PREFIX, filename))
     stage = stage['data'][::int(30*stage['fs'])]
     stage = process_stages(stage)
     mage = np.load(os.path.join(MAGE_PREFIX, filename))[key]
-    
+
     if mage.shape[1] < 4 * 60 * 2 or len(stage) < 4*60*2:
         print('less than 4 hrs mage')
-        return None, None
+        return None, None, None
     
     if mage.shape[1] != len(stage):
         if not len(stage) > mage.shape[1]:
             print('weird, stage is less than mage shape', len(stage), mage.shape[1])
-            return None, None
+            return None, None, None
 
     stage = stage[:mage.shape[1]]
-    
-    return mage, stage
-
-def get_pre_post_trend(mage, stage, stage_pre=2, stage_post=4, minutes_before=30, minutes_after=5, until_first_cycle=True):
-    stage = stage.copy()
-    if type(stage_pre) == list and 2 in stage_pre and 3 in stage_pre and 1 in stage_pre:
-        stage[stage == 3] = 2
-        stage[stage == 1] = 2
-        stage_pre = 2
-    
-    filter_msk = ((2 * minutes_before * [stage_pre]) + (2 * minutes_after * [stage_post]))[1:]
-    one_hot1 = np.eye(5)[stage]
-    one_hot2 = np.eye(5)[filter_msk]
-    
-    conv_results = np.array([convolve(one_hot1[:, i], one_hot2[::-1, i], mode='valid') for i in range(5)])
-    exact_match_sum = np.sum(conv_results, axis=0) > (len(filter_msk) * 0.05)
-    candidates = np.argwhere(exact_match_sum == True).squeeze()
-    
-    filtered_candidates = [] 
-    for idx in candidates:
-        segment_pre = stage[idx - 2 * minutes_before : idx]
-        segment_post = stage[idx : idx + 2 * minutes_after]
-        if stage[idx] == stage_post and sum(segment_pre == stage_pre) > 0.1 * minutes_before * 2 and sum(segment_post == stage_post) > 0.1 * minutes_after * 2:
-            if len(filtered_candidates) > 0 and idx - filtered_candidates[-1] > (2*(minutes_before+minutes_after)):
-                filtered_candidates.append(idx)
-            elif len(filtered_candidates) == 0:
-                filtered_candidates.append(idx)
-
-    outputs = []
-    for idx in filtered_candidates:
-        segment = np.copy(stage[idx - 2 * minutes_before : idx + 2 * minutes_after])
-        segment_msk = (2 * minutes_before * [stage_pre]) + (2 * minutes_after * [stage_post])
-        segment_msk = segment == segment_msk 
-        mage_seg = np.copy(mage[:, idx - 2 * minutes_before : idx + 2 * minutes_after])
-        mage_seg[:, ~segment_msk] = np.nan 
-        outputs.append(mage_seg)
-    
-    if len(outputs) == 0:
-        return None
-    if until_first_cycle:
-        return np.array(outputs[0])
-    return np.nanmean(np.stack(outputs, 0), 0)
-
+    if gt:
+        return mage, mage_gt[:,:mage.shape[1]], stage
+    return mage, None, stage
 def mean_percent_difference(observed, expected):
     a = observed
     b = expected
@@ -189,18 +228,31 @@ def mean_percent_difference(observed, expected):
     
     return (mean_a - mean_b) / denom * 100
 
-def bootstrap_percent_difference(observed, expected, n_bootstrap=1000, ci=95):
+def mean_percent_difference_2(observed, expected):
+    a = np.exp(observed)
+    b = np.exp(expected)
+
+    mean_a = np.nanmean(a, 0)
+    mean_b = np.nanmean(b, 0)
+    denom = np.abs(mean_b)
+    
+    return (mean_a - mean_b) / denom * 100
+
+def bootstrap_percent_difference(observed, expected, n_bootstrap=1000, ci=95, method='percent_diff'):
     n_time = observed.shape[1]
     bootstrapped_diffs = np.zeros((n_bootstrap, n_time))
-
+    if method == 'percent_diff':
+        func = mean_percent_difference
+    elif method == 'percent_diff_2':
+        func = mean_percent_difference_2
     for i in tqdm(range(n_bootstrap)):
         sample_obs = observed[np.random.choice(observed.shape[0], size=observed.shape[0], replace=True)]
         sample_exp = expected[np.random.choice(expected.shape[0], size=expected.shape[0], replace=True)]
-        bootstrapped_diffs[i] = mean_percent_difference(sample_obs, sample_exp)
+        bootstrapped_diffs[i] = func(sample_obs, sample_exp)
 
     lower = np.percentile(bootstrapped_diffs, (100 - ci) / 2, axis=0)
     upper = np.percentile(bootstrapped_diffs, 100 - (100 - ci) / 2, axis=0)
-    mean_diff = mean_percent_difference(observed, expected)
+    mean_diff = func(observed, expected)
     return mean_diff, lower, upper
 
 def naive_power_post_onset(mage, stage, minutes=60, mean=True, which_stage=[1,2,3]):
@@ -258,169 +310,140 @@ else:
 
 
 # Initialize data containers
-control_early_pwr_nrem = []
-antidep_early_pwr_nrem = []
-control_pwr_nrem = []
-antidep_pwr_nrem = []
-control_pwr_rem = [] 
-antidep_pwr_rem = [] 
 control_pwr_sleep = [] 
 antidep_pwr_sleep = [] 
-control_latency = [] 
-control_latency_collection = [] 
-antidep_latency = []
-antidep_group = [] 
-antidep_onset_nrem = [] 
-antidep_onset_nrem_nosupress = [] 
-control_onset_nrem = [] 
-control_rem_entry = [] 
-antidep_rem_entry = [] 
+antidep_pwr_sleep_gt = [] 
+control_pwr_sleep_gt = [] 
+antidep_pwr_sleep_l1 = [] 
+control_pwr_sleep_l1 = [] 
+antidep_pwr_sleep_gt_norm = [] 
+control_pwr_sleep_gt_norm = [] 
 
 # Process antidepressant files
 
 for file in tqdm(all_antideps):
     dataset = get_dataset(file)
-    mg, st = get_mage_stage(file, gt=True, dataset=dataset)
+    if dataset != 'wsc':
+        fold = int(df[df['filename'] == file]['fold'].values[0])
+    else:
+        fold = int(random.randint(0, 3))
+    mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
+    
     if mg is None or st is None:
         continue
-    #bp() 
-    mage_nrem = naive_power_post_onset(mg, st, minutes=60, mean=True, which_stage=[1,2,3])
+    
+    # post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
+    # post_onset2 = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    # if post_onset is None or post_onset2 is None:
+    #     continue 
+    
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
-    mage2_nrem = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3])
-    mage2_rem = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=4)
+    mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
+    mage_gt_norm = normalize_gt(mage_gt, dataset)
+    mage2_sleep_gt_norm = naive_power_post_onset(mage_gt_norm, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     
-    try:
-        prerem_n2 = get_pre_post_trend(mg, st, minutes_before=20, minutes_after=5, stage_pre=[1,2,3])
-    except:
-        prerem_n2 = None 
-    
-    if mage_nrem is not None and ~np.any(np.isnan(mage_nrem)) and ~np.any(np.isinf(mage_nrem)):
-        antidep_early_pwr_nrem.append(mage_nrem)
-        antidep_group.append(get_rem_supress(file, dataset=dataset))
-    
-    if mage2_nrem is not None and ~np.any(np.isnan(mage2_nrem)) and ~np.any(np.isinf(mage2_nrem)):
-        antidep_pwr_nrem.append(mage2_nrem)
-    
-    if mage2_rem is not None and ~np.any(np.isnan(mage2_rem)) and ~np.any(np.isinf(mage2_rem)):
-        antidep_pwr_rem.append(mage2_rem)
-
     if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
         antidep_pwr_sleep.append(mage2_sleep)
-    
-    # if not get_rem_supress(file, dataset=dataset) and prerem_n2 is not None:
-    #     antidep_rem_entry.append(prerem_n2)
-    #     antidep_onset_nrem_nosupress.append(get_post_onset_trend(mg, st, which_stage=[1,2,3]))
-    # elif get_rem_supress(file, dataset=dataset):
-    #     antidep_onset_nrem.append(get_post_onset_trend(mg, st, which_stage=[1,2,3]))
-
+    if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
+        antidep_pwr_sleep_gt.append(mage2_sleep_gt)
+        antidep_pwr_sleep_gt_norm.append(mage2_sleep_gt_norm)
+        antidep_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
 
 # Process control files
 for file in tqdm(all_controls):
     dataset = get_dataset(file)
-    mg, st = get_mage_stage(file, gt=True, dataset=dataset)
+    if dataset != 'wsc':
+        fold = int(df[df['filename'] == file]['fold'].values[0])
+    else:
+        fold = int(random.randint(0, 3))
+    mg, mage_gt, st = get_mage_stage(file, gt=True, dataset=dataset, fold=fold)
     
     if mg is None or st is None:
         continue
     
     # post_onset = get_post_onset_trend(mg, st, which_stage=[1,2,3])
+    # post_onset = get_post_onset_trend(mage_gt, st, which_stage=[1,2,3])
     # if post_onset is None:
     #     continue 
-    # control_onset_nrem.append(post_onset)
     
-    mage_nrem = naive_power_post_onset(mg, st, minutes=60, mean=True, which_stage=[1,2,3])
     mage2_sleep = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
-    mage2_nrem = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=[1,2,3])
-    mage2_rem = naive_power_post_onset(mg, st, minutes=1000000, mean=True, which_stage=4)
-    
-    try:
-        prerem_n2 = get_pre_post_trend(mg, st, minutes_before=20, minutes_after=5, stage_pre=[1,2,3])
-    except:
-        prerem_n2 = None 
-    
-    if mage_nrem is not None and ~np.any(np.isnan(mage_nrem)) and ~np.any(np.isinf(mage_nrem)):
-        control_early_pwr_nrem.append(mage_nrem)
-        control_latency_collection.append(get_rem_latency(st))
-    
-    if mage2_nrem is not None and ~np.any(np.isnan(mage2_nrem)) and ~np.any(np.isinf(mage2_nrem)):
-        control_pwr_nrem.append(mage2_nrem)
-    
-    if mage2_rem is not None and ~np.any(np.isnan(mage2_rem)) and ~np.any(np.isinf(mage2_rem)):
-        control_pwr_rem.append(mage2_rem)
+    mage2_sleep_gt = naive_power_post_onset(mage_gt, st, minutes=1000000, mean=True, which_stage=[1,2,3,4]) 
+    mage_gt_norm = normalize_gt(mage_gt, dataset)
+    mage2_sleep_gt_norm = naive_power_post_onset(mage_gt_norm, st, minutes=1000000, mean=True, which_stage=[1,2,3,4])
     if mage2_sleep is not None and ~np.any(np.isnan(mage2_sleep)) and ~np.any(np.isinf(mage2_sleep)):
         control_pwr_sleep.append(mage2_sleep)
-
-    if prerem_n2 is not None:
-        control_rem_entry.append(prerem_n2)
-
+    if mage2_sleep_gt is not None and ~np.any(np.isnan(mage2_sleep_gt)) and ~np.any(np.isinf(mage2_sleep_gt)):
+        control_pwr_sleep_gt.append(mage2_sleep_gt)
+        control_pwr_sleep_gt_norm.append(mage2_sleep_gt_norm)
+        control_pwr_sleep_l1.append(np.abs(mage2_sleep - mage2_sleep_gt_norm))
 # Convert to numpy arrays
-control_early_pwr_nrem = np.stack(control_early_pwr_nrem)
-antidep_early_pwr_nrem = np.stack(antidep_early_pwr_nrem)
-control_pwr_nrem = np.stack(control_pwr_nrem)
-antidep_pwr_nrem = np.stack(antidep_pwr_nrem)
-control_pwr_rem = np.stack(control_pwr_rem)
-antidep_pwr_rem = np.stack(antidep_pwr_rem)
 control_pwr_sleep = np.stack(control_pwr_sleep)
 antidep_pwr_sleep = np.stack(antidep_pwr_sleep)
-# antidep_onset_nrem = np.stack(antidep_onset_nrem)
-# antidep_onset_nrem_nosupress = np.stack(antidep_onset_nrem_nosupress)
-# control_onset_nrem = np.stack(control_onset_nrem)
-# cre = np.stack(control_rem_entry)
-# are = np.stack(antidep_rem_entry)
-
-# Create main figure with REM onset and sleep onset analysis
-fig = plt.figure(figsize=(10, 8))
-gs = gridspec.GridSpec(2, 2, width_ratios=[2, 1])
-
-ax00 = fig.add_subplot(gs[0, 0])
-ax01 = fig.add_subplot(gs[0, 1])
-ax10 = fig.add_subplot(gs[1, 0])
-ax11 = fig.add_subplot(gs[1, 1])
-ax = [[ax00, ax01], [ax10, ax11]]
+antidep_pwr_sleep_gt = np.stack(antidep_pwr_sleep_gt)
+control_pwr_sleep_gt = np.stack(control_pwr_sleep_gt)
+antidep_pwr_sleep_l1 = np.stack(antidep_pwr_sleep_l1)
+control_pwr_sleep_l1 = np.stack(control_pwr_sleep_l1)
+antidep_pwr_sleep_gt_norm = np.stack(antidep_pwr_sleep_gt_norm)
+control_pwr_sleep_gt_norm = np.stack(control_pwr_sleep_gt_norm)
 
 
 
 # Calculate percent differences with bootstrap
-whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep)
-whole_nrem2, whole_nrem_lower, whole_nrem_upper = bootstrap_percent_difference(antidep_pwr_nrem, control_pwr_nrem)
-whole_rem2, whole_rem_lower, whole_rem_upper = bootstrap_percent_difference(antidep_pwr_rem, control_pwr_rem)
-
-# Create power spectrum comparison figure
-if False:
-    fig, ax = plt.subplots(figsize=(10, 8))
-    ax.plot(smooth(whole_nrem2, 3), label='NREM', ls='dashed', color='purple')
-    ax.fill_between(np.arange(0, 256), smooth(whole_nrem_lower, 3), smooth(whole_nrem_upper, 3), alpha=0.1, color='purple')
-    ax.plot(smooth(whole_rem2, 3), label='REM', ls='dashed', color='red')
-    ax.fill_between(np.arange(0, 256), smooth(whole_rem_lower, 3), smooth(whole_rem_upper, 3), alpha=0.1, color='red')
-
-    ax.axhline(y=0, color='gray', ls='dotted', alpha=0.3)
-    for x in [1, 4, 8, 12, 16]:
-        ax.axvline(x * 8, color='gray', ls='dotted', alpha=0.3)
-
-    ax.set_xlim(-0.01, 256.01)
-    ax.set_xticks(np.arange(0, 257, 32))
-    ax.set_xticklabels(np.arange(0, 33, 4))
-    ax.set_xlabel('Frequency (Hz)')
-    ax.set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
-    ax.legend()
-    plt.savefig(f'figure_3a_{"control_matching" if CONTROL_MATCHING else "no_control_matching"}_v2.png', dpi=300, bbox_inches='tight')
-    plt.close()
-
 if True:
-    fig, ax = plt.subplots(figsize=(18, 4))
+    whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
+    whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt, method='percent_diff')
+    print('Mean differnece in percent errors: ', np.mean(np.abs(whole_sleep2 - whole_sleep_gt2)))
+    print('STD of percent errors: ', np.std(np.abs(whole_sleep2 - whole_sleep_gt2)))
+    l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]))
+    print('L1 error (individual level):', l1_error)
+    l1_error_cohort_antidep = np.mean(np.abs(np.mean(antidep_pwr_sleep_gt_norm,0) - np.mean(control_pwr_sleep,0)))
+    l1_error_cohort_control = np.mean(np.abs(np.mean(antidep_pwr_sleep,0) - np.mean(control_pwr_sleep_gt_norm,0)))
+    print('L1 error (cohort level antidep):', l1_error_cohort_antidep)
+    print('L1 error (cohort level control):', l1_error_cohort_control)
+bp() 
+if True:
+    FONT_SIZE = 12
+    whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
+    # whole_sleep_gt2, whole_sleep_gt_lower, whole_sleep_gt_upper = bootstrap_percent_difference(antidep_pwr_sleep_gt, control_pwr_sleep_gt, method='percent_diff')
+    l1_error = np.mean(np.concatenate([antidep_pwr_sleep_l1, control_pwr_sleep_l1]), 0)
+    # fig, ax = plt.subplots(3,figsize=(16, 12))
+    fig, ax  = plt.subplots(1,figsize=(6.5, 3))
+
     ax.plot(smooth(whole_sleep2, 3), label='Sleep', ls='dashed', color='black')
     ax.fill_between(np.arange(0, 256), smooth(whole_sleep_lower, 3), smooth(whole_sleep_upper, 3), alpha=0.1, color='black')
-
-    ax.axhline(y=0, color='gray', ls='dotted', alpha=0.3)
+    # ax[1].plot(smooth(l1_error, 3), label='L1 Error', ls='dashed', color='black')
+    # ax[1].set_ylim(0.04,0.09)
+    # ax[2].plot(smooth(whole_sleep2, 3), label='Sleep EEG Reconstruction', ls='dashed', color='black')
+    # ax[2].fill_between(np.arange(0, 256), smooth(whole_sleep_lower, 3), smooth(whole_sleep_upper, 3), alpha=0.1, color='black')
+    # ax[2].plot(smooth(whole_sleep_gt2, 3), label='Sleep EEG', ls='dashed', color='gray')
+    # ax[2].fill_between(np.arange(0, 256), smooth(whole_sleep_gt_lower, 3), smooth(whole_sleep_gt_upper, 3), alpha=0.1, color='black')
+    # ax[2].axhline(y=0, color='gray', ls='dotted', alpha=0.8)
+    ax.axhline(y=0, color='gray', ls='dotted', alpha=0.8)
     for x in [1, 4, 8, 12, 16]:
-        ax.axvline(x * 8, color='gray', ls='dotted', alpha=0.3)
+        # ax[2].axvline(x * 8, color='gray', ls='dotted', alpha=0.5)
+        ax.axvline(x * 8, color='gray', ls='dotted', alpha=0.5)
 
-    ax.set_xlim(-0.01, 256.01)
+    # ax[2].set_xlim(-0.01, 256.01)
+    # ax[2].set_xticks(np.arange(0, 257, 32))
+    # ax[2].set_xticklabels(np.arange(0, 33, 4))
     ax.set_xticks(np.arange(0, 257, 32))
+    ax.set_xlabel('Frequency (Hz)', fontsize=FONT_SIZE)
     ax.set_xticklabels(np.arange(0, 33, 4))
-    ax.set_xlabel('Frequency (Hz)')
-    ax.set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
-    ax.legend()
-    plt.savefig(f'figure_3a_allsleep_{"control_matching" if CONTROL_MATCHING else "no_control_matching"}_v2.png', dpi=300, bbox_inches='tight')
+    # ax[1].set_xticks(np.arange(0, 257, 32))
+    # ax[1].set_xticklabels(np.arange(0, 33, 4))
+    # ax[0].set_xlabel('Frequency (Hz)')
+    # ax[1].set_xlabel('Frequency (Hz)')
+    # ax[2].set_xlabel('Frequency (Hz)')
+    # ax.set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)', fontsize=FONT_SIZE)
+    # ax[2].set_ylabel('Percent Difference in Power\n(Antidepressants - Controls)')
+    # ax[1].set_ylabel('Mean Absolute Error (L1)')
+    # ax[2].legend()
+    ax.set_ylim(-5,25)
+    # ax[2].set_ylim(-5,25)
+    ax.set_xlim(-0.01, 256.01)
+    # ax[1].set_xlim(-0.01, 256.01)
+    # ax[2].set_xlim(-0.01, 256.01)
+    plt.savefig(f'check_reconstruction_error_v5_simplified.png', dpi=300, bbox_inches='tight')
     plt.close()
 bp() 
 print('done')

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import seaborn as sns
 from ipdb import set_trace as bp 
 import sys 
@@ -31,6 +32,7 @@ def tsne_progression_plot(
     random_state=0,
     rasterized=True,
     ticks=None,
+    label=None,
 ):
     """
     Returns (ax, im) where im is the image/mesh handle (None for pure scatter).
@@ -61,7 +63,10 @@ def tsne_progression_plot(
         idx = rng.choice(n, size=k, replace=False)
         ax.scatter(X[idx,0], X[idx,1], c=y[idx], s=s, alpha=max(0.05, alpha),
                    cmap=cmap, linewidths=0, rasterized=rasterized)
-        im = None
+        #im = None
+        ## add a colorbar to the subplot
+        sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=np.min(y), vmax=np.max(y)), cmap=cmap)
+        plt.colorbar(sm, ax=ax, fraction=0.046, pad=0.04, label=label, ticks=ticks)
 
     else:
         # Build a grid
@@ -196,6 +201,7 @@ def get_power_pred_correlation(df):
     return df_mages
 
 def plot_binned_boxplots(x, y, min_x, max_x, n_bins=8, ax=None):
+    FONT_SIZE = 9
     x = np.array(x)
     y = np.array(y)
     bins = np.linspace(min_x, max_x, n_bins)
@@ -210,15 +216,22 @@ def plot_binned_boxplots(x, y, min_x, max_x, n_bins=8, ax=None):
         fig, ax = plt.subplots(figsize=(10, 5))
     # ax.boxplot(boxplots, showfliers=False)
     sns.boxplot(data=boxplots, ax=ax, showfliers=False, palette='Greens')
-    label=f'Pearson r: {pearsonr(x, y)[0]:.3f} \n p-value: {pearsonr(x, y)[1]:.1e}'
-    ax.text(0.02, 0.9, label, ha='left', va='bottom', transform=ax.transAxes)
+    pval = pearsonr(x, y)[1]
+    pval = f'p<1e-10' if pval < 1e-10 else f'p = {pval:.2e}'
+    label=f'Pearson r: {pearsonr(x, y)[0]:.3f} \n {pval}'
+    ax.text(0.02, 0.8, label, ha='left', va='bottom', transform=ax.transAxes)
     y_pos = np.zeros(len(boxplots))
     for i in range(len(boxplots)):
-        y_pos[i] = np.median(boxplots[i])
+        # y_pos[i] = np.median(boxplots[i])
+        ## get the top of the boxplot
+        if i <= 2:
+            y_pos[i] = np.percentile(boxplots[i], 75)
+        else:
+            y_pos[i] = np.percentile(boxplots[i], 75) - 0.08
     for i in range(len(boxplots)):
-        ax.text(i, y_pos[i], f'N={len(boxplots[i])}', ha='center', va='bottom')
+        ax.text(i, y_pos[i], f'N={len(boxplots[i])}', ha='center', va='bottom', fontsize=FONT_SIZE-1)
     ax.set_xticks(np.arange(0, len(bins) - 1))
-    ax.set_xticklabels([f'{bins[i]:.0f}-{bins[i+1]:.0f}' if i < len(bins) - 2 and i != 0 else f'{bins[i]:.0f}+' if i == len(bins) - 2 else f'< {bins[i+1]:.0f}' for i in range(len(bins) - 1)])
+    ax.set_xticklabels([f'{bins[i]:.0f}-{bins[i+1]:.0f}' if i < len(bins) - 2 and i != 0 else f'{bins[i]:.0f}+' if i == len(bins) - 2 else f'< {bins[i+1]:.0f}' for i in range(len(bins) - 1)], fontsize=FONT_SIZE)
     ax.set_xlabel('REM Latency (min)')
     ax.set_ylabel('Average Model Score')
     ax.set_ylim(0, 1)
@@ -284,23 +297,21 @@ def pls_correlation(X, y):
     return X_pls
 
 # fig, ax = plt.subplots(4, 2, figsize=(8, 10))
-fig2, ax2 = plt.subplots(4, 3, figsize=(24, 24))
+
 ## now run a tsne on the latent space 
 
 x, y, y2, y3, dataset, beta_powers, so_powers = get_x_y(-1, df, df_latency, df_powers, clip=False)
-for fold in range(4):
-    plot_binned_boxplots(y, y2, 30, 240, ax=ax2[fold, 2])
 
-print('Control vs Antidepressant REM Latency: ', ttest_ind(y[y3==0], y[y3==1]))
+# print('Control vs Antidepressant REM Latency: ', ttest_ind(y[y3==0], y[y3==1]))
 
-table_data = {
-    'Metric': ['Control', 'Antidep-\nressant', 'Overall'],
-    'Pearson \n Correlation': [pearsonr(y[y3 == 0], y2[y3 == 0])[0], pearsonr(y[y3 == 1], y2[y3 == 1])[0], pearsonr(y, y2)[0]],
-    'p-value': [pearsonr(y[y3 == 0], y2[y3 == 0])[1], pearsonr(y[y3 == 1], y2[y3 == 1])[1], pearsonr(y, y2)[1]],
-}
-table = pd.DataFrame(table_data)
-table['Pearson \n Correlation'] = table['Pearson \n Correlation'].apply(lambda x: f"{x:.3f}")
-table['p-value'] = table['p-value'].apply(lambda x: f"{x:.2e}")
+# table_data = {
+#     'Metric': ['Control', 'Antidep-\nressant', 'Overall'],
+#     'Pearson \n Correlation': [pearsonr(y[y3 == 0], y2[y3 == 0])[0], pearsonr(y[y3 == 1], y2[y3 == 1])[0], pearsonr(y, y2)[0]],
+#     'p-value': [pearsonr(y[y3 == 0], y2[y3 == 0])[1], pearsonr(y[y3 == 1], y2[y3 == 1])[1], pearsonr(y, y2)[1]],
+# }
+# table = pd.DataFrame(table_data)
+# table['Pearson \n Correlation'] = table['Pearson \n Correlation'].apply(lambda x: f"{x:.3f}")
+# table['p-value'] = table['p-value'].apply(lambda x: f"{x:.2e}")
 
 
 print(f"Control correlation with rem latency: {pearsonr(y[y3 == 0], y2[y3 == 0])[0]:.3f}")
@@ -317,8 +328,32 @@ print(f"Overall correlation with so powers: {pearsonr(y2, so_powers)[0]:.3f}")
 
 print('--------------------------------')
 
+SINGLE_FOLD = True
+COLOR = 'dimgray'
+
+if SINGLE_FOLD:
+    ## make the height 6 
+    fig2 = plt.figure(figsize=(6.5, 4.5))
+    gs = gridspec.GridSpec(2, 2, figure=fig2)
+    ax2 = np.empty((2, 2), dtype=object)
+    ax2[0, 0] = fig2.add_subplot(gs[0, 0])
+    ax2[0, 1] = fig2.add_subplot(gs[0, 1])
+    ax2[1, 0] = fig2.add_subplot(gs[1, :])
+    ax2[1, 1] = ax2[1, 0]  # Same axis spanning both columns
+else:
+    fig2, ax2 = plt.subplots(4, 3, figsize=(24, 24))
 
 for fold in range(4):
+    if SINGLE_FOLD and fold != 0:
+        continue
+    if SINGLE_FOLD:
+        plot_binned_boxplots(y, y2, 30, 240, ax=ax2[1, 0])
+    else:
+        plot_binned_boxplots(y, y2, 30, 240, ax=ax2[fold, 2])
+
+for fold in range(4):
+    if SINGLE_FOLD and fold != 0:
+        continue
     x, y, y2, y3, dataset, beta_powers, so_powers = get_x_y(fold, df, df_latency, df_powers)
     # Distance matrices
     mantel_r, p_value = mantel_correlation(x, y)
@@ -328,11 +363,17 @@ for fold in range(4):
     # x = pls_correlation(x, y)
     x_tsne = tsne.fit_transform(x)
     # print(f"R² with PLS: {r2:.3f}")
-    tsne_progression_plot(x_tsne, y, ax=ax2[fold, 1], method='smooth', cmap='magma')
-    tsne_progression_plot(x_tsne, y2, ax=ax2[fold, 0], method='smooth', cmap='magma', ticks = np.arange(0, 1, 0.2))
+    if SINGLE_FOLD:
+        tsne_progression_plot(x_tsne, y, ax=ax2[0, 1], method='points', cmap='magma', s=8, point_frac=1.0, alpha=0.6, overlay_points_frac=0.0, label='Minutes')
+        ax2[0, 1].set_facecolor(COLOR)
+        tsne_progression_plot(x_tsne, y2, ax=ax2[0, 0], method='points', cmap='magma', s=8, point_frac=1.0, alpha=0.6, overlay_points_frac=0.0, label='Score')
+        ax2[0, 0].set_facecolor(COLOR)
+        # tsne_progression_plot(x_tsne, y, ax=ax2[0, 1], method='smooth', cmap='magma')
+        # tsne_progression_plot(x_tsne, y2, ax=ax2[0, 0], method='smooth', cmap='magma', ticks = np.arange(0, 1, 0.2))
+    else:
+        tsne_progression_plot(x_tsne, y, ax=ax2[fold, 1], method='smooth', cmap='magma')
+        tsne_progression_plot(x_tsne, y2, ax=ax2[fold, 0], method='smooth', cmap='magma', ticks = np.arange(0, 1, 0.2))
 
 plt.tight_layout()
-plt.show()
-sys.exit()
-plt.savefig('tsne_remlatency_overlay_v2.png', dpi=300, bbox_inches='tight')
+plt.savefig('tsne_remlatency_overlay_v3.png', dpi=300, bbox_inches='tight')
 

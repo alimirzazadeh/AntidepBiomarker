@@ -220,11 +220,12 @@ def main():
     results = []
     # df, df_eeg, labels_model_baseline, model1_cols, model2_cols = load_and_prepare_data()
     df_0 = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv')))
+    df_01noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise01.csv')))
     df_05noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise05.csv')))
     df_10noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv')))
     
-    for i, labels_model_baseline in enumerate([df_0, df_05noise, df_10noise]):
-        label_noise = [0, 0.05, 0.1][i]
+    for i, labels_model_baseline in enumerate([df_0, df_01noise, df_05noise, df_10noise]):
+        label_noise = [0, 0.01, 0.05, 0.1][i]
         label_noise_pre = label_noise
         ## represents percentage of positive class, first calcualte the proportion of positives to negatives 
         prop_positive = labels_model_baseline['label'].mean()
@@ -250,13 +251,13 @@ def main():
     
     og_auroc = dfp.iloc[0]
 
-    bp() 
-    for col in dfp.columns:
-        df2p[col] = dfp[col] - og_auroc[col]
 
-    df2p.iloc[0] = dfp.iloc[0]
+    for col in dfp.columns:
+        df2p[col] = np.round(dfp[col] - og_auroc[col], 3)
+
+    df2p.iloc[0] = dfp.iloc[0].round(3)
     df2p.index.name = 'Label Noise %'
-    dfi.export(df2p, 'label_noise_sensitivity_v2.png')
+    dfi.export(df2p, 'label_noise_sensitivity_v3.png')
     print('done')
     
 if __name__ == "__main__":

@@ -12,6 +12,9 @@ import sys
 import matplotlib.patches as mpatches
 SIMULATED = False
 MASTER_DATASET = False
+
+FONT_SIZE=8
+
 if MASTER_DATASET and SIMULATED:
     df = pd.read_csv('../data/SIMULATED_master_dataset.csv')
 elif MASTER_DATASET:
@@ -37,7 +40,7 @@ def calculate_pval_effect_size(x,y,equal_var=False):
 
 import matplotlib.pyplot as plt 
 if True:
-    fig, ax = plt.subplots(2, 2, figsize=(10, 8))
+    fig, ax = plt.subplots(2, 2, figsize=(6.5, 4))
     for i, name in enumerate(['rem_latency', 'sws_duration', 'rem_duration', 'sleep_efficiency']):
         x1 = control_df[name + '_gt'] / 2
         x2 = control_df[name + '_pred'] / 2
@@ -86,15 +89,15 @@ if True:
         ]
         ## turn off the tick labels 
         ax[i // 2, i % 2].set_xticklabels(['', '', '', ''])
-        if i == 0:
-            ax[i // 2, i % 2].legend(handles=legend_patches)
+        if i == 3:
+            ax[i // 2, i % 2].legend(handles=legend_patches, fontsize=FONT_SIZE, loc='lower right')
             
         # Add text annotations for significance and effect size
         # Function to get significance stars
         def get_significance_stars(pval):
-            if pval < 1e-10:
+            if pval < .001: #1e-10:
                 return '***'
-            elif pval < 0.001:
+            elif pval < 0.01: #0.001:
                 return '**'
             elif pval < 0.05:
                 return '*'
@@ -116,8 +119,8 @@ if True:
         # Get current y limits for positioning
         y_min, y_max = ax[i // 2, i % 2].get_ylim()
         y_pos = y_max - (y_max - y_min) * 0.15  # Position above the boxes
-        ax[i//2,i%2].text(0.5,y_min - (y_max - y_min) * 0.13,'Expert Annotated\n(EEG)', ha='center')
-        ax[i//2,i%2].text(2.5,y_min - (y_max - y_min) * 0.13,'AI Predicted\n(Respiration)', ha='center')
+        ax[i//2,i%2].text(0.5,y_min - (y_max - y_min) * 0.25,'Expert Annotated\n(EEG)', ha='center', fontsize=FONT_SIZE)
+        ax[i//2,i%2].text(2.5,y_min - (y_max - y_min) * 0.25,'AI Predicted\n(Respiration)', ha='center', fontsize=FONT_SIZE)
         
         # Add annotations for GT comparison (between positions 0 and 1)
         stars_gt = get_significance_stars(pval_gt)
@@ -125,9 +128,20 @@ if True:
         annotation_gt = stars_gt + '\n' + crosses_gt if stars_gt or crosses_gt else ''
         
         if annotation_gt:
-            # Position between GT Control (0) and GT Antidep (1)
+            # Draw bracket line between GT Control (0) and GT Antidep (1)
+            bracket_y = y_pos - (y_max - y_min) * 0.02  # Position bracket slightly below text
+            # Offset slightly inward to avoid intersecting with boxplots
+            x1_gt = 0.15
+            x2_gt = 0.85
+            bracket_color = '#666666'  # Gray color matching seaborn boxplot whiskers
+            # Draw horizontal line
+            ax[i // 2, i % 2].plot([x1_gt, x2_gt], [bracket_y, bracket_y], color=bracket_color, linewidth=1)
+            # Draw vertical lines at ends
+            ax[i // 2, i % 2].plot([x1_gt, x1_gt], [bracket_y - (y_max - y_min) * 0.01, bracket_y], color=bracket_color, linewidth=1)
+            ax[i // 2, i % 2].plot([x2_gt, x2_gt], [bracket_y - (y_max - y_min) * 0.01, bracket_y], color=bracket_color, linewidth=1)
+            # Position text above the bracket
             ax[i // 2, i % 2].text(0.5, y_pos, annotation_gt, 
-                      ha='center', va='bottom', fontsize=10, color='black')
+                      ha='center', va='bottom', fontsize=FONT_SIZE, color='black')
         
         # Add annotations for Pred comparison (between positions 2 and 3)
         stars_pred = get_significance_stars(pval_pred)
@@ -135,22 +149,42 @@ if True:
         annotation_pred = stars_pred + '\n' + crosses_pred if stars_pred or crosses_pred else ''
         
         if annotation_pred:
-            # Position between Pred Control (2) and Pred Antidep (3)
+            # Draw bracket line between Pred Control (2) and Pred Antidep (3)
+            bracket_y = y_pos - (y_max - y_min) * 0.02  # Position bracket slightly below text
+            # Offset slightly inward to avoid intersecting with boxplots
+            x1_pred = 2.15
+            x2_pred = 2.85
+            bracket_color = '#666666'  # Gray color matching seaborn boxplot whiskers
+            # Draw horizontal line
+            ax[i // 2, i % 2].plot([x1_pred, x2_pred], [bracket_y, bracket_y], color=bracket_color, linewidth=1)
+            # Draw vertical lines at ends
+            ax[i // 2, i % 2].plot([x1_pred, x1_pred], [bracket_y - (y_max - y_min) * 0.01, bracket_y], color=bracket_color, linewidth=1)
+            ax[i // 2, i % 2].plot([x2_pred, x2_pred], [bracket_y - (y_max - y_min) * 0.01, bracket_y], color=bracket_color, linewidth=1)
+            # Position text above the bracket
             ax[i // 2, i % 2].text(2.5, y_pos, annotation_pred, 
-                      ha='center', va='bottom', fontsize=10, color='black')
+                      ha='center', va='bottom', fontsize=FONT_SIZE, color='black')
         
         # Adjust y limits to accommodate annotations
         ax[i // 2, i % 2].set_ylim(y_min, y_max + (y_max - y_min) * 0.15)
         
-        ax[i // 2, i % 2].set_title(name.replace('_', ' ').title().replace('Rem Latency', 'Rapid Eye Momement (REM) Latency').replace('Sws', 'Slow Wave Sleep (SWS)').replace('Rem','REM'))
+        ax[i // 2, i % 2].set_title(name.replace('_', ' ').title().replace('Rem Latency', 'Rapid Eye Momement (REM) Latency').replace('Sws', 'Slow Wave Sleep (SWS)').replace('Rem','REM'), fontsize=FONT_SIZE)
         ax[i // 2, i % 2].set_ylabel('')
         ax[i // 2, i % 2].set_xlabel('')
-    ax[0, 0].set_ylabel('Minutes')
-    ax[1, 0].set_ylabel('Minutes')
-    ax[0, 1].set_ylabel('Minutes')
-    ax[1, 1].set_ylabel('Proportion')
+    ax[0, 0].set_ylabel('Minutes', fontsize=FONT_SIZE)
+    ax[1, 0].set_ylabel('Minutes', fontsize=FONT_SIZE)
+    ax[0, 1].set_ylabel('Minutes', fontsize=FONT_SIZE)
+    ax[1, 1].set_ylabel('Proportion', fontsize=FONT_SIZE)
+    ## set xtick and ytick labels to fontsize FONT_SIZE
+    ax[0, 0].set_xticklabels(ax[0, 0].get_xticklabels(), fontsize=FONT_SIZE)
+    ax[0, 1].set_xticklabels(ax[0, 1].get_xticklabels(), fontsize=FONT_SIZE)
+    ax[1, 0].set_xticklabels(ax[1, 0].get_xticklabels(), fontsize=FONT_SIZE)
+    ax[1, 1].set_xticklabels(ax[1, 1].get_xticklabels(), fontsize=FONT_SIZE)
+    ax[0, 0].set_yticklabels(ax[0, 0].get_yticklabels(), fontsize=FONT_SIZE)
+    ax[0, 1].set_yticklabels(ax[0, 1].get_yticklabels(), fontsize=FONT_SIZE)
+    ax[1, 0].set_yticklabels(ax[1, 0].get_yticklabels(), fontsize=FONT_SIZE)
+    ax[1, 1].set_yticklabels(ax[1, 1].get_yticklabels(), fontsize=FONT_SIZE)
     plt.tight_layout()
-
+    plt.subplots_adjust(hspace=0.36)
     plt.savefig('Figure_3a.png', dpi=300)
 
 ## now get the correlation between the ground truth and predicted features 
@@ -225,6 +259,6 @@ if True:
                          .hide(axis="index")  # hide index if not needed
 
     # Save as PNG
-    dfi.export(styled_df, "Figure_3b.png", dpi=600) ## increase the resolution 
+    dfi.export(styled_df, "Figure_3b.png", dpi=600, fontsize=FONT_SIZE) ## increase the resolution 
     
 
