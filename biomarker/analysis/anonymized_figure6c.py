@@ -19,6 +19,7 @@ age_tolerance = 5
 df = pd.read_csv('data/inference_v6emb_3920_all.csv')
 df = df[['filename', 'label', 'dataset', 'mit_age', 'mit_gender','fold']]
 df = df[df['dataset'].isin(datasets)]  # Filter for datasets that have ground truth sleep stage and EEG 
+df['filename'] = df['filename'].apply(lambda x: x.split('/')[-1])
 df = df.groupby('filename').agg('first').reset_index()
 print(df.shape)
 
