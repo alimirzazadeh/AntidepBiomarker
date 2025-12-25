@@ -1,19 +1,15 @@
 # AntidepBiomarker
 
-This repository contains the following:
-1. Executable model which takes in a breathing signal and outputs a score for antidepressant use, and an example positive and negative breathing signal 
-
-2. Anonymized data tables for recreating model results (excluding MIT dataset due to IRB)
-
-3. Scripts to generate all results and figures in the manuscript.
+This repository contains the code and analysis pipeline for the paper on antidepressant response biomarkers derived from sleep cycle and EEG data.
 
 ## Overview
 
 The pipeline consists of several analysis components:
-- Sleep stage analysis
+- Sleep cycle feature extraction and analysis
+- Ground truth EEG analysis
 - Baseline model comparisons
 - Biomarker analysis and visualization
-- Model inference
+- Model training and inference
 
 ## Prerequisites
 
@@ -42,110 +38,82 @@ matplotlib==3.7.0
 - Install Time: 1-2hrs
 - Installation Instructions: 
 1. Install the necessary pip libraries listed above on a valid python installation. 
-2. Run all analyses scripts, as needed.
-- Excepted Output: 
-Model inference:
-The script outputs a single model score z between 0 and 1, with 1 meaning high likelihood of antidepressant use. 
-Analyses scripts:
-PNG files with the same file name as the python file are created. If data creation, appropriate csv is created in the data folder 
+2. Acquire and download data, place in data folder 
+
+- Excepted Outputs: 
+Analysis Scripts: 
+- PNG files with the same file name as the python file are created. If data creation, appropriate csv is created in the data folder 
+Model Inference:
+- The script takes in a data file and outputs an antidepressant score from 0 - 1, indicating likelihood of antidepressant use. 
+
 Expected Run Time for Analyses: < 30 minutes
 - How to Run: 
-Choose appropriate file. Anonymized data csv is provided in the data subfolder. Access to MIT data is restricted due to IRB restrictions. 
 
-## Pipeline Execution
+Analysis Scripts: 
+Choose appropriate file. Anonymized data csv is provided in the data subfolder. Run the script from the main directory, i.e. python biomarker/analysis/figure_4a.py. Output is automatically saved/printed.
+
+Model Inference: 
+To run the model binary, simply input a nocturnal breathing signal (examples provided in data folder for positive and negative example), and run the python script as follows:
+
+
+Scripts: 
+
+- Data Processing:
+  - data/anonymize_data.py
+  - data/create_master_dataset.py
+  - data/create_synthetic_dataset.py
+
+- Sleep Stage Analysis (Figure 2):
+  - sleep_stage_analysis/Figure_2ab_calculate_metrics.py
+  - sleep_stage_analysis/REM_ALIGNMENT_PROD.py
+  - sleep_stage_analysis/Figure_2ab_generate_figures.py
+  - sleep_stage_analysis/Figure_2c.py
+
+- Biomarker Analysis (Figures 3-6):
+  - biomarker/analysis/figure_3a.py
+  - biomarker/analysis/figure_3b.py
+  - biomarker/analysis/figure_3c.py
+  - biomarker/analysis/figure_3d.py
+  - biomarker/analysis/figure_4.py
+  - biomarker/analysis/figure_4a.py
+  - biomarker/analysis/figure_4b.py
+  - biomarker/analysis/figure_4c.py
+  - biomarker/analysis/figure_4d.py
+  - biomarker/analysis/figure_4e.py
+  - biomarker/analysis/figure_5.py
+  - biomarker/analysis/figure_6ab.py
+  - biomarker/analysis/figure_6c.py
+
+- Supplemental Figures:
+  - supplemental_figures/check_age_dose_correlation.py
+  - supplemental_figures/check_auprc.py
+  - supplemental_figures/check_dataset_durations.py
+  - supplemental_figures/check_label_noise_sensitivity.py
+  - supplemental_figures/check_other_tsne_lda.py
+  - supplemental_figures/check_other_tsne.py
+  - supplemental_figures/per_patient_variability.py
+  - supplemental_figures/rem_latency_correlation_supplemental.py 
 
 
 
-### 3. Baseline Model Comparisons
+Anonymized Datasets: 
 
-To generate Figure 4a and baseline comparisons:
-
-1. **Generate model predictions:**
-   ```bash
-   python inference_export.py
-   ```
-
-2. **Train baseline models:**
-   ```bash
-   python baseline_models_V3.py
-   ```
-   - **Input:** Sleep stage data, EEG data, `all_dataset_sleepcycle.csv`
-   - **Output:** `df_baseline.csv`, `df_baseline_eeg.csv`
-
-3. **Generate comparison table:**
-   ```bash
-   python figure_4a.py
-   ```
-   - **Input:** `df_baseline.csv`, `df_baseline_eeg.csv`, `inference_v6emb_3920_all.csv`, `antidep_taxonomy_all_datasets_v6.csv`
-
-### 4. Biomarker Analysis
-
-First, ensure model predictions are exported:
-```bash
-python inference_export.py
-```
-
-Then generate the biomarker analysis figures:
-
-- **Figure 4b:**
-  ```bash
-  python figure_4b.py
-  ```
-
-- **Figure 4c:**
-  ```bash
-  python figure_4c.py
-  ```
-
-- **Figure 4d:**
-  ```bash
-  python figure_4d.py
-  ```
-  - **Additional input:** Dataset-specific CSVs (mros1, mros2, wsc)
-
-- **Figure 5:**
-  ```bash
-  python figure_5.py
-  ```
-
-**Common inputs for biomarker analysis:**
-- `antidep_taxonomy_all_datasets_v6.csv`
-- `inference_v6emb_3920_all.csv`
-
-### 5. Model Training
-
-To retrain the biomarker model from scratch:
-
-1. **Train the model:**
-   ```bash
-   bash train.sh
-   ```
-
-2. **Generate predictions:**
-   ```bash
-   python inference_export.py
-   ```
-
-## Key Data Files
-
-- `cycle_calculations_official.csv` - Processed sleep cycle features
-- `all_dataset_sleepcycle.csv` - Raw sleep cycle data from all datasets
-- `labels.csv` - Target labels for analysis
-- `antidep_taxonomy_all_datasets_v6.csv` - Antidepressant taxonomy data
-- `inference_v6emb_3920_all.csv` - Model predictions export
-- `df_baseline.csv`, `df_baseline_eeg.csv` - Baseline model results
-
-## Usage Notes
-
-- Ensure all input data files are present before running each step
-- The pipeline has dependencies between steps - follow the execution order
-- Dataset-specific processing may be required for the R script step
-- Model weights will be generated during training and used for inference
-
-## Citation
-
-If you use this code, please cite our paper: [Paper citation to be added]
-
-## Contact
-
-[Contact information to be added]
+- Biomarker predictions:
+   - anonymized_inference_v6emb_3920_all.csv
+- Results from Baselines: 
+   - anonymized_df_baseline.csv - baseline: sleep stage only
+   - anonymized_df_baseline_eeg.csv - baseline: sleep stage + eeg
+- Example breathing signals for model inference: 
+   - anonymized_negative_example.npz - sleep data from patient taking antidepressants
+   - anonymized_positive_example.npz - sleep data from patient not taking antidepressants 
+- Additional Dataset Labels:
+   - anonymized_antidep_taxonomy_all_datasets_v6.csv - antidepressant labels
+   - anonymized_shhs_mros_cfs_wsc_ahi.csv - apnea labels
+   - anonymized_mros1-dataset-augmented-live.csv - psychotropic medications
+   - anonymized_mros2-dataset-augmented-live.csv - psychotropic medications
+   - anonymized_wsc-dataset-0.7.0.csv - zung index, psychotropic medications 
+- Sleep Metrics:
+   - anonymized_control_pwr_sleep.npy - predicted EEG band powers
+   - anonymized_antidep_pwr_sleep.npy - predicted EEG band powers
+   - anonymized_figure_draft_v16_rem_latency.csv - Sleep hypnogram features
+   - anonymized_so_beta_powers_sleep_only.csv - EEG Band Powers
