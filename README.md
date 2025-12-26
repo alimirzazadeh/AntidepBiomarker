@@ -25,31 +25,30 @@ Each analysis script corresponds directly to one or more figures in the manuscri
 - Expected to run on standard desktop or laptop computers
 
 ### Python
-- Python 3.10  
+- Python 3.9, 3.10  
 - Analysis scripts are compatible with Python ≥ 3.9
 
 ### Hardware
 - No non-standard hardware is required  
-- GPU acceleration is optional and not required for demo analyses or reproduction of results
+- GPU acceleration is not needed for demo analyses or reproduction of results
 
 ### Software Dependencies (Exact Versions)
 
 ```text
-torch==2.0.1
-torchvision==0.15.2
-torchaudio==2.0.2
-pytorch-lightning==2.0.4
-torchmetrics==0.11.4
-lightning-utilities==0.9.0
-numpy==1.24.4
-scipy==1.10.1
-pandas==1.5.3
-scikit-learn==1.2.1
-mne==1.4.2
-umap-learn==0.5.3
-numba==0.57.0
-llvmlite==0.40.0
-matplotlib==3.7.0
+torch==2.2.1
+numpy==1.26.4
+scipy==1.15.3
+argparse==1.4.0
+numpy==1.26.4
+scipy==1.15.3
+pandas==2.3.0
+scikit-learn==1.7.0
+matplotlib==3.10.3
+seaborn==0.13.2
+dataframe_image==0.2.7
+tqdm==4.67.1
+ipdb==0.13.13
+typing_extensions==4.12.2
 ```
 
 ---
@@ -121,7 +120,12 @@ To apply the pipeline to new datasets:
 
 1. Format new inputs according to the anonymized examples in the `data/` directory.
 2. Place the formatted data in the appropriate location.
-3. Execute the desired analysis or inference script from the repository root.
+3. Execute the desired analysis or inference script as follows:
+
+```
+cd biomarker/inference 
+python run_biomarker.py data/anonymized_positive_example.npz --eeg_model encoder.pt --classifier_model classifier.pt
+```
 
 ---
 
