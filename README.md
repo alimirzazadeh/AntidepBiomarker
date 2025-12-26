@@ -124,7 +124,7 @@ To apply the pipeline to new datasets:
 
 ```
 cd biomarker/inference 
-python run_biomarker.py data/anonymized_positive_example.npz --eeg_model encoder.pt --classifier_model classifier.pt
+python run_biomarker.py ../../data/anonymized_positive_example.npz --eeg_model encoder.pt --classifier_model classifier.pt
 ```
 
 ---
