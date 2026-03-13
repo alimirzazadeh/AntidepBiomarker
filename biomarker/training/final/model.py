@@ -47,7 +47,7 @@ class BaselineViT(nn.Module):
         args.num_heads = 4 
         args.fc1_size = 128
         args.dropout = 0.5 
-        args.num_classes = 2 
+        args.num_classes = 1
         args.fc2_size = -1
         args.num_tokens = 1 
         args.tail_length_vit = -1 
@@ -69,10 +69,8 @@ class BaselineViT(nn.Module):
         age = None
         sex = None 
         modality = None
-        from ipdb import set_trace as bp
-        bp() 
-        x = self.feature_embedder(x)
-        x = x.unsqueeze(2)
+        x = self.feature_embedder(x.float())
+        x = x.unsqueeze(-1)
         #  input shape is : ##n, c, h, w 
         
         return self.model(x, rf=rf, return_embeddings=return_embeddings, return_embeddings_pred=return_embeddings_pred, age=age, sex=sex, t5_emb=t5_emb, modality=modality)
