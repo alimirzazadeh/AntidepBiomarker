@@ -22,7 +22,7 @@ from ipdb import set_trace as bp
 ## relevant to baseline transformer model 
 import sys 
 sys.path.append('../../')
-from biomarker.training.final.model import MageEncodingViT
+from biomarker.training.final.model import BaselineViT
 import json 
 import torch 
 class JSONToObject:
@@ -304,8 +304,8 @@ def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
             setattr(args, attr, default_val)
     
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    model = MageEncodingViT(args).to(args.device)
+    bp() 
+    model = BaselineViT().to(args.device)
     first_data = train_set[0]
     return 
 
