@@ -287,11 +287,13 @@ def run_inference():
     #EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_hchs_rf__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_rebuttal_rerun_plain_noduloxetine_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
     #EXP_PATH='antidep_shhs1_shhs2_mros1_mros2_cfs_hchs_rf__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_labelnoise05_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
     #EXP_PATH='antidep_shhs1_shhs2_mros1_mros2_cfs_hchs_rf__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_labelnoise10_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
-    EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_hchs_rf__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_labelnoise01_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
+    #EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_hchs_rf__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_labelnoise01_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
+    #EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_hchs_rf__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_labelnoise25_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
+    EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_hchs_rf__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_labelnoise15_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
     #EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_hchs_rf__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_rebuttal_rerun_plain_novenlafaxine_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce/'
     #EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_rebuttal_rerun_plain_nohchsrf_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
 
-    CHECKPOINT_EPOCH = 4000
+    CHECKPOINT_EPOCH = 4000 #4000
     WHICH_FOLDS = [0, 1, 2, 3]
     OLD_CHECKPOINT_EPOCH = CHECKPOINT_EPOCH
     MOST_RECENT_CHECKPOINT = CHECKPOINT_EPOCH == -1
