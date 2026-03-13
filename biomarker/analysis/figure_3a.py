@@ -19,9 +19,23 @@ from sklearn.inspection import permutation_importance
 from tqdm import tqdm
 from ipdb import set_trace as bp
 
-bp()
+## relevant to baseline transformer model 
 from biomarker.training.final.model import MageEncodingViT
-from biomarker.training.final.inference_export import load_model_and_args
+import json 
+import torch 
+class JSONToObject:
+    """Convert JSON configuration to object with dot notation access."""
+    
+    def __init__(self, data):
+        self.__dict__ = self._convert(data)
+
+    def _convert(self, data):
+        if isinstance(data, dict):
+            return {key: self._convert(value) for key, value in data.items()}
+        elif isinstance(data, list):
+            return [self._convert(item) for item in data]
+        else:
+            return data
 import re
 
 CSV_DIR = '../../data/'
@@ -267,12 +281,27 @@ def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
     fold = 0 
     model_folder = os.path.join(RUN_PATH, EXP_PATH)
     model_folder = re.sub(r'fold\d+', f'fold{fold}', model_folder)
-    
     bp() 
-    # Load model and configuration
-    args, _, _ = load_model_and_args(
-        model_folder, 4000, False
-    )
+    args_path = os.path.join(model_folder, 'args.json')
+    args = JSONToObject(json.load(open(args_path, 'r')))
+    
+    # Set default values for missing attributes
+    default_attrs = {
+        't5_demographics': False,
+        't5_demographics_nomean': False,
+        'age_input': False,
+        'sex_input': False,
+        'no_conv_proj': False,
+        'minority_pos_oversample': False,
+        'black_oversample': False,
+        'modality_input': False
+    }
+    
+    for attr, default_val in default_attrs.items():
+        if not hasattr(args, attr):
+            setattr(args, attr, default_val)
+    
+    args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     model = MageEncodingViT(args).to(args.device)
     first_data = train_set[0]
