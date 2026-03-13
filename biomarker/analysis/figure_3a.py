@@ -20,6 +20,8 @@ from tqdm import tqdm
 from ipdb import set_trace as bp
 
 ## relevant to baseline transformer model 
+import sys 
+sys.path.append('../../')
 from biomarker.training.final.model import MageEncodingViT
 import json 
 import torch 
