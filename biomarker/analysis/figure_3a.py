@@ -304,9 +304,11 @@ def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
             setattr(args, attr, default_val)
     
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    num_features = train_set[0].shape[0]
+    model = BaselineViT(num_features).to(args.device)
+    first_data = torch.tensor(train_set[0:4]).to(args.device)
+    model(first_data)
     bp() 
-    model = BaselineViT().to(args.device)
-    first_data = train_set[0]
     return 
 
 def run_rf_auroc(train_set, train_y, test_set, test_y, cols=None):

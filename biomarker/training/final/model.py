@@ -5,6 +5,68 @@ from collections import OrderedDict
 from functools import partial
 from typing import Any, Callable, Dict, List, NamedTuple, Optional
 from functools import partial
+from argparse import Namespace
+
+class FeatureEmbedder(nn.Module):
+    def __init__(self, num_features: int, d_model: int = 128):
+        super().__init__()
+        self.embedders = nn.ModuleList([
+            nn.Linear(1, d_model) for _ in range(num_features)
+        ])
+        self.norm = nn.LayerNorm(d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: (batch, num_features)
+        Returns:
+            (batch, num_features, d_model)
+        """
+        tokens = [emb(x[:, i].unsqueeze(-1)) for i, emb in enumerate(self.embedders)]
+        return self.norm(torch.stack(tokens, dim=1))
+
+class BaselineViT(nn.Module):
+    def __init__(self, num_features):
+        super(BaselineViT, self).__init__()
+        ## needs args: num_heads, feature_dim, fc1_size, dropout, num_classes, fc2_size 
+        # have to make sure the input shape is : ##n, c, h, w 
+        # {'lr': 5e-05, 'w': '1.0,1.0', 'task': 'binary', 'dataset': 'shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc', 
+        # 'bs': 48, 'num_steps': 4000, 'debug': False, 'label': 'antidep', 'fold': 0, 'add_name': 'V5.0.6_nohchsrftune', 
+        # 'dropout': 0.1, 'mage_encoding_vit_model': True, 'hidden_size': 8, 'simul_separate_optimizers': False, 
+        # 'save_model': True, 'training_resample': True, 'log_every_n_step': 140, 'tuning': False, 'mage_pred_input': False, 
+        # 'use_gt_as_mage_pred': False, 'mage_pred_vit_model': False, 'mage_pred_kaiwen_model': False, 'pos_class_oversample': 2, 
+        # 'add_ssri_loss': False, 'add_subtype_loss': False, 'CLEANED_DATA': False, 'separate_head': False, 'NOISE_PADDING': False, 
+        # 'weight_decay': 0.01, 'focal_loss': False, 'MAGE_INPUT_SIZE': 150, 'gamma': 1.0, 'alpha': 0.8, 'margin': 1.0, 't5_demographics_nomean': False, 
+        # 'beta': 0.98, 'age_input': False, 'sex_input': False, 'conditional_mask_ratio': 0.5, 'no_conv_proj': False, 't5_demographics': False, 
+        # 'natural_reweight': False, 'black_oversample': 0, 'minority_pos_oversample': 0, 'balanced_medications_per_fold': False, 'num_datasets': 1}
+        
+        args = Namespace()
+        args.num_layers_vit = 4 
+        args.feature_dim = 128 
+        args.MAGE_INPUT_SIZE = num_features
+        args.num_heads = 4 
+        args.fc1_size = 128
+        args.dropout = 0.5 
+        args.num_classes = 2 
+        args.fc2_size = -1
+        args.num_tokens = 1 
+        args.tail_length_vit = -1 
+        args.num_token_heads = 4 
+        args.svd_reduce = 0 
+        self.feature_embedder = nn.E
+        self.model = VisionTransformer(args, image_size=[1,self.args.MAGE_INPUT_SIZE],patch_size=1,num_layers=args.num_layers_vit,num_heads=args.num_heads,hidden_dim=args.feature_dim,mlp_dim=args.fc1_size,dropout=args.dropout,attention_dropout=args.dropout / 2, num_classes=args.num_classes, representation_size=args.fc2_size if args.fc2_size != -1 else None)
+        self.feature_embedder = FeatureEmbedder(args.MAGE_INPUT_SIZE, args.feature_dim)
+    def forward(self, x, age=None, gender=None, rf=None, return_embeddings=False, return_embeddings_pred=False, t5_emb=None, modality=None):
+        age = None
+        sex = None 
+        modality = None
+        from ipdb import set_trace as bp
+        bp() 
+        x = self.feature_embedder(x)
+        x = x.unsqueeze(2)
+        #  input shape is : ##n, c, h, w 
+        
+        return self.model(x, rf=rf, return_embeddings=return_embeddings, return_embeddings_pred=return_embeddings_pred, age=age, sex=sex, t5_emb=t5_emb, modality=modality)
 
 class MageEncodingViT(nn.Module):
     def __init__(self, args):
