@@ -283,7 +283,6 @@ def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
     fold = 0 
     model_folder = os.path.join(RUN_PATH, EXP_PATH)
     model_folder = re.sub(r'fold\d+', f'fold{fold}', model_folder)
-    bp() 
     args_path = os.path.join(model_folder, 'args.json')
     args = JSONToObject(json.load(open(args_path, 'r')))
     
@@ -305,6 +304,7 @@ def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
     
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     num_features = train_set[0].shape[0]
+    bp() 
     model = BaselineViT(num_features).to(args.device)
     first_data = torch.tensor(train_set[0:4]).to(args.device)
     model(first_data)
