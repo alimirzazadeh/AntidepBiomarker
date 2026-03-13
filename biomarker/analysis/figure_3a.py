@@ -32,7 +32,9 @@ def load_and_prepare_data():
     df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
     df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
     # labels = pd.read_csv(os.path.join(CSV_DIR,'rebuttal_nohchsrf_inference_v6emb_3920_all.csv'))
-    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
+    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_2940_all_noise25.csv'))
     df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
     
     # Prepare sleep stage features dataset
@@ -231,6 +233,49 @@ def run_rf_auroc_pruned(train_set, train_y, test_set, test_y, cols=None):
     return y_prob
 
 
+def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
+    """
+    Train Random Forest classifier and evaluate performance.
+    
+    Parameters:
+    -----------
+    train_set : array-like
+        Training features
+    train_y : array-like
+        Training labels
+    test_set : array-like
+        Test features
+    test_y : array-like
+        Test labels
+    cols : list, optional
+        Column names for feature importance reporting
+        
+    Returns:
+    --------
+    array : Predicted probabilities for test set
+    """
+    # Clean NaNs and infs
+    RUN_PATH = '/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/'
+    EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_V5.0.6_nohchsrftune_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
+    train_set = np.nan_to_num(train_set, nan=0.0, posinf=0.0, neginf=0.0)
+    test_set = np.nan_to_num(test_set, nan=0.0, posinf=0.0, neginf=0.0)
+    from biomarker.training.final.model import MageEncodingViT
+    from biomarker.training.final.inference_export import load_model_and_args
+    import re
+    fold = 0 
+    model_folder = os.path.join(RUN_PATH, EXP_PATH)
+    model_folder = re.sub(r'fold\d+', f'fold{fold}', model_folder)
+    
+    # Load model and configuration
+    args, _, _ = load_model_and_args(
+        model_folder, 4000, False
+    )
+    
+    model = MageEncodingViT(args).to(args.device)
+    first_data = train_set[0]
+    bp() 
+    return 
+
 def run_rf_auroc(train_set, train_y, test_set, test_y, cols=None):
     """
     Train Random Forest classifier and evaluate performance.
@@ -344,6 +389,8 @@ def run_cross_validation(df, df_eeg, model1_cols, model2_cols):
         
         # Train and evaluate sleep stage model
         print('Sleep Stage Model:')
+        run_transformer_baseline(train_features, train_y, test_features, test_y, cols=model1_cols)
+        bp()
         probs_sleep = run_rf_auroc(train_features, train_y, test_features, test_y, cols=model1_cols)
         bootstrap_auroc_ci(test_y, probs_sleep)
         

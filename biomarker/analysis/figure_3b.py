@@ -16,9 +16,10 @@ from ipdb import set_trace as bp
 from sklearn.metrics import roc_auc_score, f1_score, confusion_matrix
 
 # Configuration
-# INFERENCE_FILE = '../../data/inference_v6emb_3920_all.csv'
+INFERENCE_FILE = '../../data/inference_v6emb_3920_all.csv'
 # INFERENCE_FILE = '../../data/nodulox_inference_v6emb_3920_all.csv'
-INFERENCE_FILE = '../../data/inference_v6emb_3920_all_novenlafaxine.csv'
+# INFERENCE_FILE = '../../data/inference_v6emb_3920_all_novenlafaxine.csv'
+# INFERENCE_FILE = '../../data/inference_v6emb_2940_all_noise25.csv'
 
 TAXONOMY_FILE = '../../data/antidep_taxonomy_all_datasets_v6.csv'
 
