@@ -52,6 +52,15 @@ class BaselineViT(nn.Module):
         args.num_tokens = 1 
         args.tail_length_vit = -1 
         args.num_token_heads = 4 
+        args.separate_head = False 
+        args.mage_pred_vit_model = False 
+        args.t5_demographics = False 
+        args.t5_demographics_nomean = False 
+        args.age_input = False 
+        args.sex_input = False 
+        args.modality_input = False 
+        args.label = 'antidep'
+        args.no_conv_proj = True 
         args.svd_reduce = 0 
         self.args = args 
         self.model = VisionTransformer(args, image_size=[1,self.args.MAGE_INPUT_SIZE],patch_size=1,num_layers=args.num_layers_vit,num_heads=args.num_heads,hidden_dim=args.feature_dim,mlp_dim=args.fc1_size,dropout=args.dropout,attention_dropout=args.dropout / 2, num_classes=args.num_classes, representation_size=args.fc2_size if args.fc2_size != -1 else None)
