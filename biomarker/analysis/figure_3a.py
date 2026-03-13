@@ -19,6 +19,12 @@ from sklearn.inspection import permutation_importance
 from tqdm import tqdm
 from ipdb import set_trace as bp
 
+import sys 
+sys.path.append('../../')
+from biomarker.training.final.model import MageEncodingViT
+from biomarker.training.final.inference_export import load_model_and_args
+import re
+
 CSV_DIR = '../../data/'
 def load_and_prepare_data():
     """
@@ -32,8 +38,8 @@ def load_and_prepare_data():
     df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
     df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
     # labels = pd.read_csv(os.path.join(CSV_DIR,'rebuttal_nohchsrf_inference_v6emb_3920_all.csv'))
-    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
-    #labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
+    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv'))
     # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_2940_all_noise25.csv'))
     df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
     
@@ -259,9 +265,6 @@ def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
     EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_V5.0.6_nohchsrftune_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
     train_set = np.nan_to_num(train_set, nan=0.0, posinf=0.0, neginf=0.0)
     test_set = np.nan_to_num(test_set, nan=0.0, posinf=0.0, neginf=0.0)
-    from biomarker.training.final.model import MageEncodingViT
-    from biomarker.training.final.inference_export import load_model_and_args
-    import re
     fold = 0 
     model_folder = os.path.join(RUN_PATH, EXP_PATH)
     model_folder = re.sub(r'fold\d+', f'fold{fold}', model_folder)
