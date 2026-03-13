@@ -269,6 +269,7 @@ def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
     model_folder = os.path.join(RUN_PATH, EXP_PATH)
     model_folder = re.sub(r'fold\d+', f'fold{fold}', model_folder)
     
+    bp() 
     # Load model and configuration
     args, _, _ = load_model_and_args(
         model_folder, 4000, False
@@ -276,7 +277,6 @@ def run_transformer_baseline(train_set, train_y, test_set, test_y, cols=None):
     
     model = MageEncodingViT(args).to(args.device)
     first_data = train_set[0]
-    bp() 
     return 
 
 def run_rf_auroc(train_set, train_y, test_set, test_y, cols=None):
