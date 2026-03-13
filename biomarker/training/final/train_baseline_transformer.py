@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from model import BaselineViT
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from dataset import CrossFold, DataCollector_V2,  LabelHunter
@@ -13,6 +13,7 @@ from tqdm import tqdm
 from ipdb import set_trace as bp
 #import numpy as np
 import argparse
+import re
 import json 
 import torch.nn.functional as F
 from metrics import Metrics
@@ -64,95 +65,20 @@ def transform_modality(dataset):
     return [1 if item.startswith('hchs') else 2 if item == 'rf' else 0 for item in dataset]
 
 
-def contrastive_loss(y_pred, y_true , margin=1.0):
-    x_normalized = F.normalize(y_pred, p=2, dim=1) 
-    cosine_similarity_matrix = torch.matmul(x_normalized, x_normalized.T) 
-    positive_pairs = y_true * (1 - cosine_similarity_matrix) **2
-    negative_pairs = (~y_true) * F.relu(cosine_similarity_matrix - margin) ** 2
-    loss = (positive_pairs + negative_pairs).mean()
-    return loss 
+class JSONToObject:
+    """Convert JSON configuration to object with dot notation access."""
+    
+    def __init__(self, data):
+        self.__dict__ = self._convert(data)
 
-def get_contrastive_label(y_dict):
-    y_label = [item.split('/')[-2] for item in y_dict['filepath']]
-    y_label = np.array(y_label)
-    return torch.tensor(y_label[:,None] == y_label[None, :])
+    def _convert(self, data):
+        if isinstance(data, dict):
+            return {key: self._convert(value) for key, value in data.items()}
+        elif isinstance(data, list):
+            return [self._convert(item) for item in data]
+        else:
+            return data
 
-
-parser = argparse.ArgumentParser(description='trainingLoop w/specified hyperparams')
-parser.add_argument('-lr', type=float, default=4e-4, help='learning rate')
-parser.add_argument('-w', type=str, default='1.0,10.0', help='respective class weights (comma-separated)')
-parser.add_argument('--task', type=str, default='multiclass', help='multiclass or regression')
-parser.add_argument('--num_classes', type=int, default=2, help='for multiclass')
-parser.add_argument('--dataset', type=str, default='wsc', help='which dataset to train on')
-parser.add_argument('-bs', type=int, default=16, help='batch size')
-parser.add_argument('--num_steps', type=int, default=100)
-parser.add_argument('--debug', action='store_true')
-parser.add_argument('--label', type=str, default='antidep', help="dep, antidep, or benzo")
-parser.add_argument('--fold', type=int, default=0, help="for cross-validation")
-parser.add_argument('--num_heads', type=int, default=3, help="for attention condensation")
-parser.add_argument('--add_name', type=str, default="", help="adds argument to the experiment name")
-parser.add_argument('--dropout', type=float, default=0.5, help="dropout regularization")
-parser.add_argument('--mage_encoding_vit_model', action='store_true', default=False, help="use simon model")
-parser.add_argument('--hidden_size', type=int, default=8, help="for SimonModel")
-parser.add_argument('--fc2_size', type=int, default=32, help="for SimonModel")
-parser.add_argument('--fc1_size', type=int, default=8, help="for SimonModel")
-## for conv model
-parser.add_argument('--feature_dim', type=int, default=16, help="for MageModel")
-parser.add_argument('--num_token_heads', type=int, default=4, help="for MageModel")
-parser.add_argument('--svd_reduce', type=int, default=0, help="for svd reduction")
-parser.add_argument('--save_model', action='store_true', default=False, help="use simon model")
-parser.add_argument('--training_resample', action='store_true', default=False, help="use simon model")
-parser.add_argument('--log_every_n_step', type=int, default=100, help= '')
-parser.add_argument('--tuning', action='store_true', default=False, help="tuning mode ")
-parser.add_argument('--mage_pred_input', action='store_true', default=False, help="uses the mage image rather than the latent space ")
-parser.add_argument('--use_gt_as_mage_pred', action='store_true', default=False, help="uses the eeg multitaper image rather than the mage pred ")
-parser.add_argument('--mage_pred_vit_model', action='store_true', default=False, help="Mage Pred Based VIT MODEL ")
-parser.add_argument('--mage_pred_kaiwen_model', action='store_true', default=False, help="Mage Pred Based Conv Model from Kaiwen MODEL ")
-parser.add_argument('--pos_class_oversample', type=int, default=0, help="scaling factor for how many times to oversample the positive class")
-
-parser.add_argument('--simul_separate_optimizers', action='store_true', default=False, help="for simul training, separates the losses into different optimizers")
-parser.add_argument('--add_ssri_loss', action='store_true', default=False, help="for simul training, whether to add the ssri loss ")
-parser.add_argument('--add_subtype_loss', action='store_true', default=False, help="for simul training, whether to add the subtype loss ")
-
-parser.add_argument('--CLEANED_DATA', action='store_true', default=False, help=" use cleaned version of RF data, also with new mage version for all datasets ")
-
-parser.add_argument('--separate_head', action='store_true', default=False, help=" adds a separate head for the simul task")
-parser.add_argument('--num_layers_vit', type=int, default=4, help="for vit ")
-
-parser.add_argument('--NOISE_PADDING', action='store_true', default=False, help=" instead of padding with 0s uses random noise, also can randomly add to beginning  ")
-
-parser.add_argument('--tail_length_vit', type=int, default=-1, help="separates initial layers for VIT, -1 has no separation, 0 separates the embedding, >1 is how many layers of vit to separate ")
-parser.add_argument('--num_tokens', type=int, default=1, help='how many classifier tokens to append to the transformer')
-                    
-parser.add_argument('--weight_decay', type=float, default=1e-4, help="l2 regularization")
-parser.add_argument('--focal_loss', action='store_true', default=False)
-
-parser.add_argument('--MAGE_INPUT_SIZE', type=int, default=150, help='either 150 or 270, specifies the mage input size limit')
-
-parser.add_argument('--gamma',type=float, default=1.0) ## for focal loss
-parser.add_argument('--alpha', type=float, default=0.8 ) ## for focal loss
-
-parser.add_argument('--margin', type=float, default=1.0, help='contrastive loss margin')
-parser.add_argument('--beta', type=float, default=0.5, help='ratio between losses, higher beta more contrastive loss')
-
-parser.add_argument('--modality_input', action='store_true', default=False)
-parser.add_argument('--age_input', action='store_true', default=False)
-parser.add_argument('--sex_input', action='store_true', default=False)
-
-parser.add_argument('--conditional_mask_ratio', type=float, default=0.5, help='ratio be')
-
-parser.add_argument('--no_conv_proj', action='store_true', default=False)
-
-parser.add_argument('--t5_demographics', action='store_true', default=False)
-parser.add_argument('--t5_demographics_nomean', action='store_true', default=False)
-
-parser.add_argument('--natural_reweight', action='store_true', default=False)
-
-parser.add_argument('--black_oversample', type=int, default=0, help="for svd reduction")
-parser.add_argument('--minority_pos_oversample', type=int, default=0, help="for svd reduction")
-
-parser.add_argument('--balanced_medications_per_fold', action='store_true', default=False)
-parser.add_argument('--training_resample_number', type=int, default=60, help="number of rf nights per patient in epoch")
 
 
 torch.manual_seed(20)
@@ -161,7 +87,36 @@ np.random.seed(20)
 folder_path = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/"
 model_folder = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024"
 
-args = parser.parse_args()
+RUN_PATH = '/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/'
+EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_V5.0.6_nohchsrftune_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
+
+fold = 0 
+model_folder = os.path.join(RUN_PATH, EXP_PATH)
+model_folder = re.sub(r'fold\d+', f'fold{fold}', model_folder)
+args_path = os.path.join(model_folder, 'args.json')
+args = JSONToObject(json.load(open(args_path, 'r')))
+
+# Set default values for missing attributes
+default_attrs = {
+    't5_demographics': False,
+    't5_demographics_nomean': False,
+    'age_input': False,
+    'sex_input': False,
+    'no_conv_proj': False,
+    'minority_pos_oversample': False,
+    'black_oversample': False,
+    'modality_input': False
+}
+
+for attr, default_val in default_attrs.items():
+    if not hasattr(args, attr):
+        setattr(args, attr, default_val)
+
+args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+USE_ONLY_STAGE_FEATURES = True 
+    
+# args = parser.parse_args()
 lr = args.lr
 task = args.task
 dataset_name = args.dataset
@@ -216,25 +171,128 @@ for item in aa[1].split('_'):
     external_val_dataset.append(item)
 
 
-# dc = DataCollector_V2('mage',train_datasets + external_val_dataset, args.fold)
-# lh = LabelHunter(args.label)
-# cf = CrossFold(4,args, use_kaiwen_split= False, use_balanced_med_split=args.balanced_medications_per_fold, use_paper_split=True)
 
+### load the features 
 
-# args.num_datasets = 1 
-
-# for dataset in dc.all_files:
-#     print(dataset)
-#     lbls = lh.get(dc.all_files[dataset], dataset)
-#     gndr = lh.get_gender(dc.all_files[dataset],dataset)
-#     age = lh.get_age(dc.all_files[dataset],dataset)
-#     race = lh.get_race(dc.all_files[dataset],dataset)
+def load_and_prepare_data():
+    """
+    Load and prepare all datasets for analysis.
     
-#     cf.add(lbls, dc.get_filepath(dataset), is_rf=(dataset == 'rf'), is_external=(dataset in external_val_dataset), gender=gndr, age=age, race=race)
+    Returns:
+    --------
+    tuple : (df, df_eeg, labels_model_baseline, model1_cols, model2_cols)
+    """
+    # Load datasets
+    df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
+    df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'rebuttal_nohchsrf_inference_v6emb_3920_all.csv'))
+    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_2940_all_noise25.csv'))
+    df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
+    
+    # Prepare sleep stage features dataset
+    df = df.drop(columns=['dataset'])
+    model1_cols = [col for col in df.columns if col not in ['filename', 'fold', 'dataset', 'label']]
+    
+    # Prepare EEG features dataset
+    df_eeg = df_eeg.merge(df, on='filename', how='inner')
+    df_eeg = df_eeg.drop(columns=['dataset'])
+    model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
+    
+    # Process our model predictions
+    labels['filename'] = labels['filename'].apply(lambda x: x.split('/')[-1])
+    labels = labels.groupby('filename', as_index=False).agg(
+        lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
+    )
+    
+    # Clean participant IDs across datasets
+    for dataset in ['wsc', 'mros', 'shhs']:
+        mask = labels['dataset'] == dataset
+        labels.loc[mask, 'pid'] = labels.loc[mask, 'pid'].apply(lambda x: x[1:] if isinstance(x, str) and x else x)
+    
+    # Merge with taxonomy data
+    labels_model_baseline = pd.merge(labels, df_taxonomy, on='filename', how='inner')
+    labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
+        'pred': 'mean', 
+        'dataset': 'first', 
+        'label': 'first', 
+        'fold': 'first'
+    }).reset_index()
+    
+    # Convert logits to probabilities
+    labels_model_baseline['prob'] = 1 / (1 + np.exp(-labels_model_baseline['pred']))
+    
+    # Merge labels with feature datasets
+    labels_subset = labels[['filename', 'label', 'fold', 'dataset', 'mit_gender', 'mit_age']]
+    df = df.merge(labels_subset, on='filename', how='inner')
+    df_eeg = df_eeg.merge(labels_subset, on='filename', how='inner')
+    
+    return df, df_eeg, labels_model_baseline, model1_cols, model2_cols
 
-# trainset, testset = cf.split(fold=args.fold, return_datasets=True)
+def get_datasets():
+    df, df_eeg, _, _, _ = load_and_prepare_data()
+    train_mask = (df['fold'] != fold) & (df['dataset'] != 'wsc')
+    test_mask = (df['fold'] == fold) | (df['dataset'] == 'wsc')
+    
+    # Sleep stage model data
+    train_set = df[train_mask].copy()
+    test_set = df[test_mask].copy()
+    train_y = train_set['label'].values
+    test_y = test_set['label'].values
+    
+    # EEG model data
+    train_set_eeg = df_eeg[train_mask].copy()
+    test_set_eeg = df_eeg[test_mask].copy()
+    
+    # Store metadata
+    test_set_datasets = test_set['dataset'].values
+    test_set_labels = test_set['label'].values
+    
+    # Prepare feature matrices
+    train_features = train_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    test_features = test_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    
+    train_features_eeg = train_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    test_features_eeg = test_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    
+    train_set = np.nan_to_num(train_set, nan=0.0, posinf=0.0, neginf=0.0)
+    test_set = np.nan_to_num(test_set, nan=0.0, posinf=0.0, neginf=0.0)
+    train_set_eeg = np.nan_to_num(train_set_eeg, nan=0.0, posinf=0.0, neginf=0.0)
+    test_set_eeg = np.nan_to_num(test_set_eeg, nan=0.0, posinf=0.0, neginf=0.0)
+    
+    if USE_ONLY_STAGE_FEATURES:
+        num_features = train_features.shape[1]
+        train_dataset = TensorDataset(
+            torch.from_numpy(train_features).float(),
+            torch.from_numpy(train_y).float(),
+        )
+        test_dataset = TensorDataset(
+            torch.from_numpy(test_features).float(),
+            torch.from_numpy(test_y).float(),
+        )
+        return train_dataset, test_dataset, num_features
+    else:
+        num_features = train_features_eeg.shape[1]
+        train_dataset = TensorDataset(
+            torch.from_numpy(train_features_eeg).float(),
+            torch.from_numpy(train_y).float(),
+        )
+        test_dataset = TensorDataset(
+            torch.from_numpy(test_features_eeg).float(),
+            torch.from_numpy(test_y).float(),
+        )
+        return train_dataset, test_dataset, num_features
+    ## train_features, train_y, test_features, test_y 
 
-print(trainset[0])
+
+
+
+    
+
+
+trainset, testset, num_features = get_datasets()
+
 
 print('Length of trainset: ', len(trainset))
 print('Length of testset: ', len(testset))

@@ -53,7 +53,7 @@ class BaselineViT(nn.Module):
         args.tail_length_vit = -1 
         args.num_token_heads = 4 
         args.svd_reduce = 0 
-        args = self.args 
+        self.args = args 
         self.model = VisionTransformer(args, image_size=[1,self.args.MAGE_INPUT_SIZE],patch_size=1,num_layers=args.num_layers_vit,num_heads=args.num_heads,hidden_dim=args.feature_dim,mlp_dim=args.fc1_size,dropout=args.dropout,attention_dropout=args.dropout / 2, num_classes=args.num_classes, representation_size=args.fc2_size if args.fc2_size != -1 else None)
         self.feature_embedder = FeatureEmbedder(args.MAGE_INPUT_SIZE, args.feature_dim)
     def forward(self, x, age=None, gender=None, rf=None, return_embeddings=False, return_embeddings_pred=False, t5_emb=None, modality=None):
