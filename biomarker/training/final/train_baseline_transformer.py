@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from model import BaselineViT
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, Dataset
 from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from dataset import CrossFold, DataCollector_V2,  LabelHunter
@@ -218,6 +218,28 @@ def load_and_prepare_data():
     
     return df, df_eeg, model1_cols, model2_cols
 
+class FeaturesAndDictDataset(Dataset):
+    """Dataset that returns (features, y_dict) with y_dict = {'label', 'dataset', 'filename'}."""
+    def __init__(self, features, labels, datasets, filenames):
+        self.features = torch.from_numpy(features).float() if not isinstance(features, torch.Tensor) else features.float()
+        self.labels = torch.from_numpy(labels).float() if not isinstance(labels, torch.Tensor) else labels.float()
+        self.datasets = datasets
+        self.filenames = filenames
+
+    def __len__(self):
+        return len(self.features)
+
+    def __getitem__(self, i):
+        return (
+            self.features[i],
+            {
+                'label': self.labels[i],
+                'dataset': str(self.datasets[i]),
+                'filename': str(self.filenames[i]),
+            }
+        )
+
+
 def get_datasets():
     df, df_eeg, _, _ = load_and_prepare_data()
     
@@ -229,7 +251,11 @@ def get_datasets():
     test_set = df[test_mask].copy()
     train_y = train_set['label'].values
     test_y = test_set['label'].values
-    
+    train_datasets = train_set['dataset'].values
+    train_filenames = train_set['filename'].values
+    test_datasets = test_set['dataset'].values
+    test_filenames = test_set['filename'].values
+
     # EEG model data
     train_set_eeg = df_eeg[train_mask].copy()
     test_set_eeg = df_eeg[test_mask].copy()
@@ -252,24 +278,20 @@ def get_datasets():
     
     if USE_ONLY_STAGE_FEATURES:
         num_features = train_features.shape[1]
-        train_dataset = TensorDataset(
-            torch.from_numpy(train_features).float(),
-            torch.from_numpy(train_y).float(),
+        train_dataset = FeaturesAndDictDataset(
+            train_features, train_y, train_datasets, train_filenames
         )
-        test_dataset = TensorDataset(
-            torch.from_numpy(test_features).float(),
-            torch.from_numpy(test_y).float(),
+        test_dataset = FeaturesAndDictDataset(
+            test_features, test_y, test_datasets, test_filenames
         )
         return train_dataset, test_dataset, num_features
     else:
         num_features = train_features_eeg.shape[1]
-        train_dataset = TensorDataset(
-            torch.from_numpy(train_features_eeg).float(),
-            torch.from_numpy(train_y).float(),
+        train_dataset = FeaturesAndDictDataset(
+            train_features_eeg, train_y, train_datasets, train_filenames
         )
-        test_dataset = TensorDataset(
-            torch.from_numpy(test_features_eeg).float(),
-            torch.from_numpy(test_y).float(),
+        test_dataset = FeaturesAndDictDataset(
+            test_features_eeg, test_y, test_datasets, test_filenames
         )
         return train_dataset, test_dataset, num_features
     ## train_features, train_y, test_features, test_y 
@@ -385,12 +407,13 @@ def run_val_epoch(n_model, epoch):
         running_loss = 0
           
         for X_batch, y_batch in tqdm(test_loader):
-            bp() 
             t5_emb = None 
-            
+            y_label = y_batch['label']
+            y_dataset = y_batch['dataset']
             X_batch = X_batch.to(device)
             y_label = y_label.to(device)
-            y_pred = n_model(x=X_batch, t5_emb=t5_emb, modality=y_dataset_emb) #gender=y_gender, age=y_age)
+            bp() 
+            y_pred = n_model(x=X_batch) #gender=y_gender, age=y_age)
             loss = loss_fn(y_pred.squeeze(1), y_label.float())
             
             running_loss += loss.item()
