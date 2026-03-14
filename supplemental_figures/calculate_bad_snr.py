@@ -31,7 +31,7 @@ def get_bad_signal_time(filename, plot=False ):
     sleep_idx = sleep_idx * 150
     # wake_idx = wake_idx * 150
     # end_idx - wake_idx
-    end_idx = start_idx + sleep_idx + 4 * 60 * 60 * 5
+    end_idx = start_idx + sleep_idx + 2 * 60 * 60 * 5
     v1 = (data_med[start_idx + sleep_idx + int(0 * 60 * 60 * 5):end_idx] > 0.5)
     
     data2 = (data > 0.5).astype(float)
