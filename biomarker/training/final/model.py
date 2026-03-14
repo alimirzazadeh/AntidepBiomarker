@@ -69,6 +69,8 @@ class BaselineViT(nn.Module):
         age = None
         sex = None 
         modality = None
+        from ipdb import set_trace as bp
+        bp() 
         x = self.feature_embedder(x.float())
         x = x.unsqueeze(-1)
         #  input shape is : ##n, c, h, w 
