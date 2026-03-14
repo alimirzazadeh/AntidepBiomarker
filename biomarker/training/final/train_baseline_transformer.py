@@ -412,7 +412,6 @@ def run_val_epoch(n_model, epoch):
             y_dataset = y_batch['dataset']
             X_batch = X_batch.to(device)
             y_label = y_label.to(device)
-            bp() 
             y_pred = n_model(x=X_batch) #gender=y_gender, age=y_age)
             loss = loss_fn(y_pred.squeeze(1), y_label.float())
             
