@@ -214,12 +214,12 @@ def load_and_prepare_data():
     
     # Merge with taxonomy data
     labels_model_baseline = pd.merge(labels, df_taxonomy, on='filename', how='inner')
-    labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
-        'pred': 'mean', 
-        'dataset': 'first', 
-        'label': 'first', 
-        'fold': 'first'
-    }).reset_index()
+    # labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
+    #     'pred': 'mean', 
+    #     'dataset': 'first', 
+    #     'label': 'first', 
+    #     'fold': 'first'
+    # }).reset_index()
     
     # Convert logits to probabilities
     labels_model_baseline['prob'] = 1 / (1 + np.exp(-labels_model_baseline['pred']))
@@ -233,6 +233,7 @@ def load_and_prepare_data():
 
 def get_datasets():
     df, df_eeg, _, _, _ = load_and_prepare_data()
+    bp() 
     train_mask = (df['fold'] != fold) & (df['dataset'] != 'wsc')
     test_mask = (df['fold'] == fold) | (df['dataset'] == 'wsc')
     
