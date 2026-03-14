@@ -17,6 +17,7 @@ def get_bad_signal_time(filename):
 
 output = {} 
 for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
+    filename = filename.split('/')[-1]
     bad_signal_time = get_bad_signal_time(filename)
     output[filename] = bad_signal_time
 
