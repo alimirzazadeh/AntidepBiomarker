@@ -10,7 +10,7 @@ df = pd.read_csv('../data/inference_v6emb_3920_all.csv')
 
 def get_bad_signal_time(filename):
     pid = filename.split('_')[0]
-    data = np.load(f'/data/netmit/sleep_lab/rf/snr/{pid}/{filename}')
+    data = np.load(f'/data/netmit/sleep_lab/rf/snr/{pid}/{filename}')['data']
     start_idx = start_stop_dict[filename][0]
     end_idx = start_stop_dict[filename][1]
     return (data[start_idx:end_idx] < 0.5).sum() / (5 * 60)
