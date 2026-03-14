@@ -27,7 +27,7 @@ def get_bad_signal_time(filename, plot=False ):
     end_idx = start_idx + sleep_idx + 4 * 60 * 60 * 5
     v1 = (data_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5).sum() / (5 * 60)
     
-    data2 = (data > 0.5).float()
+    data2 = (data > 0.5).astype(float)
     data2_med = medfilt(data2, kernel_size=150*4*5 + 1)
     v2 = (data2_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5).sum() / (5 * 60)
     if plot:
