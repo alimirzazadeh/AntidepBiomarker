@@ -4,19 +4,20 @@ import pandas as pd
 from tqdm import tqdm
 from ipdb import set_trace as bp
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 ## medfilt
 from scipy.signal import medfilt
 start_stop_dict = np.load('/data/netmit/sleep_lab/rf/start_end_idx_padded.npz')
 df = pd.read_csv('../data/inference_v6emb_3920_all.csv')
 
-def get_bad_signal_time(filename):
+def get_bad_signal_time(filename, plot=False ):
     pid = filename.split('_')[0]
     data = np.load(f'/data/netmit/sleep_lab/rf/snr/{pid}/{filename}')['data']
     start_idx = start_stop_dict[filename][0]
     end_idx = start_stop_dict[filename][1]
     stage = np.load(f'/data/netmit/sleep_lab/rf/stage/{pid}/{filename}')['data']
     
-    data = medfilt(data, kernel_size=150*4*5 + 1)
+    data_med = medfilt(data, kernel_size=150*4*5 + 1)
     sleep_idx = list(stage > 0).index(True)
     wake_idx = list(stage > 0)[::-1].index(True)
     
@@ -24,15 +25,33 @@ def get_bad_signal_time(filename):
     # wake_idx = wake_idx * 150
     # end_idx - wake_idx
     end_idx = start_idx + sleep_idx + 4 * 60 * 60 * 5
-    return (data[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5).sum() / (5 * 60)
+    v1 = (data_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5).sum() / (5 * 60)
+    
+    data2 = (data > 0.5).float()
+    data2_med = medfilt(data2, kernel_size=150*4*5 + 1)
+    v2 = (data2_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5).sum() / (5 * 60)
+    if plot:
+        fig, ax = plt.subplots(3, figsize=(10, 5))
+        ax[0].plot(data[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx])
+        ax[1].scatter(np.arange(start_idx + sleep_idx + int(0.25 * 60 * 60 * 5), end_idx), data_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx])
+        ax[2].scatter(np.arange(start_idx + sleep_idx + int(0.25 * 60 * 60 * 5), end_idx), data2_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx])
+        ax[0].set_title('Original Signal')
+        ax[1].set_title('Median Filtered')
+        ax[2].set_title('Binary Filtered')
+        # plt.savefig(f'../data/plots/snr_comparison_{filename}.png')
+        plt.show()
+    return v1, v2
+
+
 
 output = {} 
 for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
     filename = filename.split('/')[-1]
-    bad_signal_time = get_bad_signal_time(filename)
-    output[filename] = bad_signal_time
+    bad_signal_time, bad_signal_time_binary = get_bad_signal_time(filename, plot=True)
+    bp() 
+    output[filename] = [bad_signal_time, bad_signal_time_binary]
 
 #     raise ValueError("If using all scalar values, you must pass an index")
 # ValueError: If using all scalar values, you must pass an index
-output = pd.DataFrame(output.items(), columns=['filename', 'bad_signal_time'])
+output = pd.DataFrame(output.items(), columns=['filename', 'bad_signal_time', 'bad_signal_time_binary'])
 output.to_csv('../data/bad_signal_time_1007.csv', index=False)
