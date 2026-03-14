@@ -10,6 +10,13 @@ from scipy.signal import medfilt
 start_stop_dict = np.load('/data/netmit/sleep_lab/rf/start_end_idx_padded.npz')
 df = pd.read_csv('../data/inference_v6emb_3920_all.csv')
 
+def fill_ends_with_1(arr):
+    ones = np.where(arr == 1)[0]
+    if len(ones) == 0:
+        return arr
+    arr[:ones[0]] = 1
+    arr[ones[-1] + 1:] = 1
+    return arr
 def get_bad_signal_time(filename, plot=False ):
     pid = filename.split('_')[0]
     data = np.load(f'/data/netmit/sleep_lab/rf/snr/{pid}/{filename}')['data']
@@ -30,6 +37,9 @@ def get_bad_signal_time(filename, plot=False ):
     data2 = (data > 0.5).astype(float)
     data2_med = medfilt(data2, kernel_size=150*4*5 + 1)
     v2 = (data2_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5).sum() / (5 * 60)
+    
+    v1 = fill_ends_with_1(v1)
+    v2 = fill_ends_with_1(v2)
     if plot:
         fig, ax = plt.subplots(3, figsize=(10, 5))
         ax[0].plot(data[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx])
