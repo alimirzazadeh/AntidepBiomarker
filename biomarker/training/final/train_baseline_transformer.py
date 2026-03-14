@@ -282,7 +282,7 @@ def get_datasets():
 
 trainset, testset, num_features = get_datasets()
 
-bp() 
+
 print('Length of trainset: ', len(trainset))
 print('Length of testset: ', len(testset))
 
@@ -317,24 +317,6 @@ argstosave = deepcopy(vars(args))
 argstosave.pop('device')
 json.dump(argstosave, open(os.path.join(exp_event_path,'args.json'),'w'), indent=4)
 with open(os.path.join(exp_event_path,'command.txt'),'w') as file: file.write(' '.join(sys.argv))
-
-
-if not args.debug:
-    train_pids = set()
-    if type(trainset) == torch.utils.data.dataset.ConcatDataset:
-        for item in trainset.datasets:
-            train_pids.update(list(item.data))
-    else:
-        for train_batch in tqdm(train_loader):
-            data, y_dict = train_batch
-            train_pids.update(y_dict['filepath'])
-    test_pids = set()
-    for test_batch in tqdm(test_loader):
-        data, y_dict = test_batch
-        test_pids.update(y_dict['filepath'])
-    
-    json.dump(list(train_pids), open(os.path.join(exp_event_path,'train.json'),'w'), indent=4)
-    json.dump(list(test_pids), open(os.path.join(exp_event_path,'val.json'),'w'), indent=4)
 
 
 
