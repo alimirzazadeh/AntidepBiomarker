@@ -82,98 +82,78 @@ class JSONToObject:
 
 
 
-torch.manual_seed(20)
-np.random.seed(20)
-
-folder_path = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/"
-model_folder = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024"
-CSV_DIR = '../../../data/'
-RUN_PATH = '/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/'
-EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_V5.0.6_nohchsrftune_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
-
-fold = 0 
-model_folder = os.path.join(RUN_PATH, EXP_PATH)
-model_folder = re.sub(r'fold\d+', f'fold{fold}', model_folder)
-args_path = os.path.join(model_folder, 'args.json')
-args = JSONToObject(json.load(open(args_path, 'r')))
-
-# Set default values for missing attributes
-default_attrs = {
-    't5_demographics': False,
-    't5_demographics_nomean': False,
-    'age_input': False,
-    'sex_input': False,
-    'no_conv_proj': False,
-    'minority_pos_oversample': False,
-    'black_oversample': False,
-    'modality_input': False
-}
-
-for attr, default_val in default_attrs.items():
-    if not hasattr(args, attr):
-        setattr(args, attr, default_val)
-
-args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-USE_ONLY_STAGE_FEATURES = True 
+def run_train_step(n_model, trainloader):
+    try:
+        X_batch, y_batch = next(trainloader)
+    except:
+        trainloader = iter(train_loader)
+        X_batch, y_batch = next(trainloader)
     
-# args = parser.parse_args()
-lr = args.lr
-task = args.task
-dataset_name = args.dataset
-label = args.label
-num_classes = args.num_classes
-num_class_name = f"class_{num_classes}"
-batch_size = args.bs
-debug = args.debug
-num_steps = args.num_steps
-#num_folds = args.num_folds
-fold = args.fold
-add_name = args.add_name
-args.feature_dim = 32
+    X_batch = X_batch.to(device)
+    
+    
+    
+    
+    
+    n_model.train()
+    with torch.enable_grad():
+        y_label = y_batch['label']
+        y_label = y_label.to(device)
+        y_dataset = y_batch['dataset']
+        y_dataset_emb = torch.tensor(transform_modality(y_dataset), dtype=torch.int64, device=device) if args.modality_input else None
 
-dpt = args.dropout
-dpt_str = f"_{dpt}"
-print("Label: ", label)
+        t5_emb = None 
+        
+            
+        y_pred = n_model(x=X_batch, t5_emb=t5_emb, modality=y_dataset_emb) 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(device)
-args.device = device
+        loss = loss_fn(y_pred.squeeze(1), y_label.float())
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(itertools.chain(n_model.parameters()), max_norm=1.0)
+        optimizer.step()
+        metrics.fill_metrics(y_pred, y_label, y_dataset = y_dataset)
+        
+    return loss.item() 
 
+def run_val_epoch(n_model, epoch):
+    
+    n_model.eval()
 
-
-if args.focal_loss:
-    loss_fn = BinaryFocalLoss(alpha=args.alpha, gamma=args.gamma, logits=True)
-else:
-    if args.natural_reweight:
-        loss_fn = nn.BCEWithLogitsLoss(reduce=False)
-    else:
-        loss_fn = nn.BCEWithLogitsLoss(reduce=True)
-
-lr_warmup_prop = 0.1
-
-
-### Going to create two sets of datasets and loaders, one for contrastive task and the other for antidep task
-
-
-#### ANTIDEP TASK
-aa = dataset_name.split("__")
-train_datasets = [] 
-external_val_dataset = []
-for item in aa[0].split('_'):
-    if item == '':
-        continue
-    assert item in ['hchs','mros1', 'mros2','rf', 'wsc', 'shhs1', 'shhs2', 'cfs', 'stages']
-    train_datasets.append(item)
-for item in aa[1].split('_'):
-    if item == '':
-        continue
-    assert item in ['hchs','mros1', 'mros2','rf', 'wsc', 'shhs1', 'shhs2', 'cfs', 'stages']
-    assert item not in train_datasets
-    external_val_dataset.append(item)
+    with torch.no_grad():
+        running_loss = 0
+          
+        for X_batch, y_batch in tqdm(test_loader):
+            t5_emb = None 
+            y_label = y_batch['label']
+            y_dataset = y_batch['dataset']
+            X_batch = X_batch.to(device)
+            y_label = y_label.to(device)
+            y_pred = n_model(x=X_batch) #gender=y_gender, age=y_age)
+            loss = loss_fn(y_pred.squeeze(1), y_label.float())
+            
+            running_loss += loss.item()
+            metrics.fill_metrics(y_pred, y_label, y_dataset = y_dataset) # feed the raw scores, not thresh'd
 
 
 
+
+        
+        epoch_loss = running_loss / len(test_loader)
+        
+        
+        computed_metrics = metrics.compute_and_log_metrics(loss=epoch_loss) #, loss3=gender_loss)
+            
+        logger(writer, computed_metrics, 'val', epoch)
+        
+        metrics.clear_metrics()   
+        if args.save_model: 
+            print('saving at epoch: ', epoch)
+            model_name = exp_name + str(epoch) + ".pt"
+            model_save_path = os.path.join(exp_event_path, model_name)
+            torch.save(n_model.state_dict(), model_save_path)
+        
+        
 ### load the features 
 
 def load_and_prepare_data():
@@ -300,188 +280,205 @@ def get_datasets():
 
 
 
-    
-trainset, testset, num_features = get_datasets()
 
-args.MAGE_INPUT_SIZE = num_features
-model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
+for fold in range(1,4):
+    torch.manual_seed(20)
+    np.random.seed(20)
 
-print('Length of trainset: ', len(trainset))
-print('Length of testset: ', len(testset))
-
-train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=20, drop_last=True )
-test_loader = DataLoader(testset, batch_size=batch_size*4, shuffle=False, num_workers=20)
-
+    folder_path = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/"
+    model_folder = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024"
+    CSV_DIR = '../../../data/'
+    RUN_PATH = '/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/'
+    EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_V5.0.6_nohchsrftune_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
 
 
+    model_folder = os.path.join(RUN_PATH, EXP_PATH)
+    model_folder = re.sub(r'fold\d+', f'fold{fold}', model_folder)
+    args_path = os.path.join(model_folder, 'args.json')
+    args = JSONToObject(json.load(open(args_path, 'r')))
 
-print('Baseline VIT Model')
-    
+    # Set default values for missing attributes
+    default_attrs = {
+        't5_demographics': False,
+        't5_demographics_nomean': False,
+        'age_input': False,
+        'sex_input': False,
+        'no_conv_proj': False,
+        'minority_pos_oversample': False,
+        'black_oversample': False,
+        'modality_input': False
+    }
 
-n_model = model 
-if not args.debug:
-    n_model = torch.nn.DataParallel(n_model)
+    for attr, default_val in default_attrs.items():
+        if not hasattr(args, attr):
+            setattr(args, attr, default_val)
 
-n_model = n_model.to(device)
+    args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-print("Total Trainable Parameters: {:,}".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
-
-pretrained = '' 
-exp_name = f"BASELINE_{args.label}_{dataset_name}_lr_{lr}_bs_{batch_size}_steps_{num_steps}_dpt_{args.dropout}_fold{fold}{pretrained}_heads{args.num_heads}_{add_name}_featuredim_{args.feature_dim}_numtokenheads_{args.num_token_heads}_{'trn_resmp' if args.training_resample else ''}_{'NOISE' if args.NOISE_PADDING else ''}_{'TAIL'+str(args.tail_length_vit) if args.tail_length_vit >=0 else ''}_wd_{str(round(args.weight_decay,4))}_{'focal'+str(round(args.gamma,2)) + str(round(args.alpha)) if args.focal_loss else 'bce'}"
-
-if not os.path.exists(folder_path):
-    os.makedirs(folder_path)
-    print(f"Folder path '{folder_path}' created successfully.")
-exp_event_path = os.path.join(folder_path, exp_name)
-
-writer = SummaryWriter(log_dir=exp_event_path)
-
-argstosave = deepcopy(vars(args))
-argstosave.pop('device')
-json.dump(argstosave, open(os.path.join(exp_event_path,'args.json'),'w'), indent=4)
-with open(os.path.join(exp_event_path,'command.txt'),'w') as file: file.write(' '.join(sys.argv))
-
-
-
-
-assert task == 'binary' 
-
-
-optimizer = optim.AdamW(
-    itertools.chain(n_model.parameters()),
-    lr=0,
-    weight_decay=args.weight_decay
-)
-
-scheduler = None
-
-metrics = Metrics(args)
-
-max_f1 = -1.0
-
-val_losses = [] 
-
-
-
-
-
-
-def run_train_step(n_model, trainloader):
-    try:
-        X_batch, y_batch = next(trainloader)
-    except:
-        trainloader = iter(train_loader)
-        X_batch, y_batch = next(trainloader)
-    
-    X_batch = X_batch.to(device)
-    
-    
-    
-    
-    
-    n_model.train()
-    with torch.enable_grad():
-        y_label = y_batch['label']
-        y_label = y_label.to(device)
-        y_dataset = y_batch['dataset']
-        y_dataset_emb = torch.tensor(transform_modality(y_dataset), dtype=torch.int64, device=device) if args.modality_input else None
-
-        t5_emb = None 
+    USE_ONLY_STAGE_FEATURES = True 
         
-            
-        y_pred = n_model(x=X_batch, t5_emb=t5_emb, modality=y_dataset_emb) 
+    # args = parser.parse_args()
+    lr = args.lr
+    task = args.task
+    dataset_name = args.dataset
+    label = args.label
+    num_classes = args.num_classes
+    num_class_name = f"class_{num_classes}"
+    batch_size = args.bs
+    debug = args.debug
+    num_steps = args.num_steps
+    #num_folds = args.num_folds
+    fold = args.fold
+    add_name = args.add_name
+    args.feature_dim = 32
 
-        loss = loss_fn(y_pred.squeeze(1), y_label.float())
-        optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(itertools.chain(n_model.parameters()), max_norm=1.0)
-        optimizer.step()
-        metrics.fill_metrics(y_pred, y_label, y_dataset = y_dataset)
-        
-    return loss.item() 
+    dpt = args.dropout
+    dpt_str = f"_{dpt}"
+    print("Label: ", label)
 
-def run_val_epoch(n_model, epoch):
-    
-    n_model.eval()
-
-    with torch.no_grad():
-        running_loss = 0
-          
-        for X_batch, y_batch in tqdm(test_loader):
-            t5_emb = None 
-            y_label = y_batch['label']
-            y_dataset = y_batch['dataset']
-            X_batch = X_batch.to(device)
-            y_label = y_label.to(device)
-            y_pred = n_model(x=X_batch) #gender=y_gender, age=y_age)
-            loss = loss_fn(y_pred.squeeze(1), y_label.float())
-            
-            running_loss += loss.item()
-            metrics.fill_metrics(y_pred, y_label, y_dataset = y_dataset) # feed the raw scores, not thresh'd
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(device)
+    args.device = device
 
 
 
-
-        
-        epoch_loss = running_loss / len(test_loader)
-        
-        
-        computed_metrics = metrics.compute_and_log_metrics(loss=epoch_loss) #, loss3=gender_loss)
-            
-        logger(writer, computed_metrics, 'val', epoch)
-        
-        metrics.clear_metrics()   
-        if args.save_model: 
-            print('saving at epoch: ', epoch)
-            model_name = exp_name + str(epoch) + ".pt"
-            model_save_path = os.path.join(exp_event_path, model_name)
-            torch.save(n_model.state_dict(), model_save_path)
-        
-        
-
-step = 0
-
-
-run_val_epoch(n_model, epoch=step)
-
-trainloader = iter(train_loader)
-
-running_loss = 0
-
-for step in tqdm(range(num_steps)):
-    step += 1 
-    
-    
-    rl1 = run_train_step(n_model, trainloader)
-    
-
-    if step < args.num_steps * lr_warmup_prop:
-        lr = args.lr * (step / (args.num_steps * lr_warmup_prop))
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
+    if args.focal_loss:
+        loss_fn = BinaryFocalLoss(alpha=args.alpha, gamma=args.gamma, logits=True)
     else:
-        if scheduler is None:
-            if not args.tuning:
-                scheduler = lr_scheduler.CosineAnnealingLR(optimizer, int(args.num_steps * (1-lr_warmup_prop)), eta_min=0)
-            else:
-                scheduler = None
-
+        if args.natural_reweight:
+            loss_fn = nn.BCEWithLogitsLoss(reduce=False)
         else:
-            scheduler.step() 
+            loss_fn = nn.BCEWithLogitsLoss(reduce=True)
+
+    lr_warmup_prop = 0.1
+
+
+    ### Going to create two sets of datasets and loaders, one for contrastive task and the other for antidep task
+
+
+    #### ANTIDEP TASK
+    aa = dataset_name.split("__")
+    train_datasets = [] 
+    external_val_dataset = []
+    for item in aa[0].split('_'):
+        if item == '':
+            continue
+        assert item in ['hchs','mros1', 'mros2','rf', 'wsc', 'shhs1', 'shhs2', 'cfs', 'stages']
+        train_datasets.append(item)
+    for item in aa[1].split('_'):
+        if item == '':
+            continue
+        assert item in ['hchs','mros1', 'mros2','rf', 'wsc', 'shhs1', 'shhs2', 'cfs', 'stages']
+        assert item not in train_datasets
+        external_val_dataset.append(item)
+
+
+
         
-    
-    running_loss += rl1
-    
-    
-    if step % args.log_every_n_step == 0:
-        epoch_loss = running_loss / (args.log_every_n_step) #len(train_loader)
-        # epoch_loss_d = running_loss2/ (args.log_every_n_step) #len(train_loader)
+    trainset, testset, num_features = get_datasets()
+
+    args.MAGE_INPUT_SIZE = num_features
+    model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
+
+    print('Length of trainset: ', len(trainset))
+    print('Length of testset: ', len(testset))
+
+    train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=20, drop_last=True )
+    test_loader = DataLoader(testset, batch_size=batch_size*4, shuffle=False, num_workers=20)
+
+
+
+
+    print('Baseline VIT Model')
         
-        computed_metrics = metrics.compute_and_log_metrics(epoch_loss) #, hy_loss=epoch_loss_d) #loss3=epoch_loss3)
-        logger(writer, computed_metrics, 'train', step )
-        metrics.clear_metrics()
+
+    n_model = model 
+    if not args.debug:
+        n_model = torch.nn.DataParallel(n_model)
+
+    n_model = n_model.to(device)
+
+    print("Total Trainable Parameters: {:,}".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
+
+    pretrained = '' 
+    exp_name = f"BASELINE_{args.label}_{dataset_name}_lr_{lr}_bs_{batch_size}_steps_{num_steps}_dpt_{args.dropout}_fold{fold}{pretrained}_heads{args.num_heads}_{add_name}_featuredim_{args.feature_dim}_numtokenheads_{args.num_token_heads}_{'trn_resmp' if args.training_resample else ''}_{'NOISE' if args.NOISE_PADDING else ''}_{'TAIL'+str(args.tail_length_vit) if args.tail_length_vit >=0 else ''}_wd_{str(round(args.weight_decay,4))}_{'focal'+str(round(args.gamma,2)) + str(round(args.alpha)) if args.focal_loss else 'bce'}"
+
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+        print(f"Folder path '{folder_path}' created successfully.")
+    exp_event_path = os.path.join(folder_path, exp_name)
+
+    writer = SummaryWriter(log_dir=exp_event_path)
+
+    argstosave = deepcopy(vars(args))
+    argstosave.pop('device')
+    json.dump(argstosave, open(os.path.join(exp_event_path,'args.json'),'w'), indent=4)
+    with open(os.path.join(exp_event_path,'command.txt'),'w') as file: file.write(' '.join(sys.argv))
+
+
+
+
+    assert task == 'binary' 
+
+
+    optimizer = optim.AdamW(
+        itertools.chain(n_model.parameters()),
+        lr=0,
+        weight_decay=args.weight_decay
+    )
+
+    scheduler = None
+
+    metrics = Metrics(args)
+
+    max_f1 = -1.0
+
+    val_losses = [] 
+
+
+    step = 0
+
+
+    run_val_epoch(n_model, epoch=step)
+
+    trainloader = iter(train_loader)
+
+    running_loss = 0
+
+    for step in tqdm(range(num_steps)):
+        step += 1 
         
-        running_loss = 0
-        running_loss2 = 0
         
-        run_val_epoch(n_model, epoch=step)
+        rl1 = run_train_step(n_model, trainloader)
+        
+
+        if step < args.num_steps * lr_warmup_prop:
+            lr = args.lr * (step / (args.num_steps * lr_warmup_prop))
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
+        else:
+            if scheduler is None:
+                if not args.tuning:
+                    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, int(args.num_steps * (1-lr_warmup_prop)), eta_min=0)
+                else:
+                    scheduler = None
+
+            else:
+                scheduler.step() 
+            
+        
+        running_loss += rl1
+        
+        
+        if step % args.log_every_n_step == 0:
+            epoch_loss = running_loss / (args.log_every_n_step) #len(train_loader)
+            # epoch_loss_d = running_loss2/ (args.log_every_n_step) #len(train_loader)
+            
+            computed_metrics = metrics.compute_and_log_metrics(epoch_loss) #, hy_loss=epoch_loss_d) #loss3=epoch_loss3)
+            logger(writer, computed_metrics, 'train', step )
+            metrics.clear_metrics()
+            
+            running_loss = 0
+            running_loss2 = 0
+            
+            run_val_epoch(n_model, epoch=step)
