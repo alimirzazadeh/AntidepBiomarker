@@ -69,12 +69,10 @@ class BaselineViT(nn.Module):
         age = None
         sex = None 
         modality = None
-        from ipdb import set_trace as bp
-        bp() 
         x = self.feature_embedder(x.float())
         x = x.unsqueeze(-1)
         #  input shape is : ##n, c, h, w 
-        
+        x = x.swapaxes(1,2).swapaxes(2,3)
         return self.model(x, rf=rf, return_embeddings=return_embeddings, return_embeddings_pred=return_embeddings_pred, age=age, sex=sex, t5_emb=t5_emb, modality=modality)
 
 class MageEncodingViT(nn.Module):
