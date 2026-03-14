@@ -130,6 +130,7 @@ num_steps = args.num_steps
 #num_folds = args.num_folds
 fold = args.fold
 add_name = args.add_name
+args.feature_dim = 32
 
 dpt = args.dropout
 dpt_str = f"_{dpt}"
