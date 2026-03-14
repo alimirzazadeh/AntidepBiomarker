@@ -54,14 +54,13 @@ def get_bad_signal_time(filename, plot=False ):
 
 
 
-output = {} 
+output = {}
 for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
     filename = filename.split('/')[-1]
     bad_signal_time, bad_signal_time_binary = get_bad_signal_time(filename, plot=False)
-
     output[filename] = [bad_signal_time, bad_signal_time_binary]
 
-#     raise ValueError("If using all scalar values, you must pass an index")
-# ValueError: If using all scalar values, you must pass an index
-output = pd.DataFrame(output, columns=['bad_signal_time', 'bad_signal_time_binary'])
+output = pd.DataFrame.from_dict(output, orient='index', columns=['bad_signal_time', 'bad_signal_time_binary'])
+output = output.reset_index()
+output.columns = ['filename', 'bad_signal_time', 'bad_signal_time_binary']
 output.to_csv('../data/bad_signal_time_1007.csv', index=False)
