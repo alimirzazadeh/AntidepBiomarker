@@ -14,12 +14,12 @@ def get_bad_signal_time(filename):
     start_idx = start_stop_dict[filename][0]
     end_idx = start_stop_dict[filename][1]
     stage = np.load(f'/data/netmit/sleep_lab/rf/stage/{pid}/{filename}')['data']
-    bp() 
+
     sleep_idx = list(stage > 0).index(True)
     wake_idx = list(stage > 0)[::-1].index(True)
     
-    sleep_idx = sleep_idx // 4
-    wake_idx = wake_idx // 4
+    sleep_idx = sleep_idx * 150
+    wake_idx = wake_idx * 150
     return (data[start_idx + sleep_idx:end_idx - wake_idx] < 0.5).sum() / (5 * 60)
 
 output = {} 
