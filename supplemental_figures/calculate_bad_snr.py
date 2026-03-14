@@ -63,5 +63,5 @@ for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
 
 #     raise ValueError("If using all scalar values, you must pass an index")
 # ValueError: If using all scalar values, you must pass an index
-output = pd.DataFrame(output.items(), columns=['filename', 'bad_signal_time', 'bad_signal_time_binary'])
+output = pd.DataFrame(output, columns=['bad_signal_time', 'bad_signal_time_binary'])
 output.to_csv('../data/bad_signal_time_1007.csv', index=False)
