@@ -64,4 +64,4 @@ output = pd.DataFrame.from_dict(output, orient='index', columns=['bad_signal_tim
 output = output.reset_index()
 output.columns = ['filename', 'bad_signal_time', 'bad_signal_time_binary']
 output = output[['filename', 'bad_signal_time']].copy() 
-output.to_csv('../data/bad_signal_time_1007.csv', index=False)
+output.to_csv('../data/bad_signal_time.csv', index=False)

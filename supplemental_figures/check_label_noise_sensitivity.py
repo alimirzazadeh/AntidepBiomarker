@@ -23,31 +23,31 @@ CSV_DIR = '../data/'
 
 label_noise = 0
 
-def check_single_sample_auroc():
-    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
-    labels = labels[labels['dataset'] == 'rf']
-    ci = 0.95
-    bootstrapped_scores = []
-    for _ in tqdm(range(1000), desc="Bootstrap sampling"):
-        # Sample with replacement
-        sample = labels.groupby('pid').apply(lambda x: x.sample(n=1, replace=False))
+# def check_single_sample_auroc():
+#     labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
+#     labels = labels[labels['dataset'] == 'rf']
+#     ci = 0.95
+#     bootstrapped_scores = []
+#     for _ in tqdm(range(1000), desc="Bootstrap sampling"):
+#         # Sample with replacement
+#         sample = labels.groupby('pid').apply(lambda x: x.sample(n=1, replace=False))
         
-        score = roc_auc_score(sample['label'], sample['pred'])
-        bootstrapped_scores.append(score)
+#         score = roc_auc_score(sample['label'], sample['pred'])
+#         bootstrapped_scores.append(score)
     
-    # Calculate confidence intervals
-    sorted_scores = np.sort(bootstrapped_scores)
-    lower_idx = int((1.0 - ci) / 2.0 * len(sorted_scores))
-    upper_idx = int((1.0 + ci) / 2.0 * len(sorted_scores))
-    lower = sorted_scores[lower_idx]
-    upper = sorted_scores[upper_idx]
-    mean = np.mean(bootstrapped_scores)
+#     # Calculate confidence intervals
+#     sorted_scores = np.sort(bootstrapped_scores)
+#     lower_idx = int((1.0 - ci) / 2.0 * len(sorted_scores))
+#     upper_idx = int((1.0 + ci) / 2.0 * len(sorted_scores))
+#     lower = sorted_scores[lower_idx]
+#     upper = sorted_scores[upper_idx]
+#     mean = np.mean(bootstrapped_scores)
     
-    print(f"AUROC: {mean:.4f} (95% CI: {lower:.4f} - {upper:.4f})")
-    ## group by pid, but as part of bootstrapping randomly sample a single per pid 
+#     print(f"AUROC: {mean:.4f} (95% CI: {lower:.4f} - {upper:.4f})")
+#     ## group by pid, but as part of bootstrapping randomly sample a single per pid 
     
-    auroc = roc_auc_score(labels['label'], labels['pred'])
-    return auroc
+#     auroc = roc_auc_score(labels['label'], labels['pred'])
+#     return auroc
 
 def flip_label(label, prop_flip=0.1, only_if_label_is_0=False):
     """
@@ -85,9 +85,9 @@ def load_and_prepare_data(labels):
     
     # Process our model predictions
     labels['filename'] = labels['filename'].apply(lambda x: x.split('/')[-1])
-    labels = labels.groupby('filename', as_index=False).agg(
-        lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
-    )
+    # labels = labels.groupby('filename', as_index=False).agg(
+    #     lambda x: x.mean() if pd.api.types.is_numeric_dtype(x) else x.iloc[0]
+    # )
     
     # Clean participant IDs across datasets
     for dataset in ['wsc', 'mros', 'shhs']:
@@ -96,12 +96,12 @@ def load_and_prepare_data(labels):
     
     # Merge with taxonomy data
     labels_model_baseline = pd.merge(labels, df_taxonomy, on='filename', how='inner')
-    labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
-        'pred': 'mean', 
-        'dataset': 'first', 
-        'label': 'first', 
-        'fold': 'first'
-    }).reset_index()
+    # labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
+    #     'pred': 'mean', 
+    #     'dataset': 'first', 
+    #     'label': 'first', 
+    #     'fold': 'first'
+    # }).reset_index()
     
     # Convert logits to probabilities
     labels_model_baseline['prob'] = 1 / (1 + np.exp(-labels_model_baseline['pred']))
@@ -195,15 +195,15 @@ def evaluate_per_dataset_performance(labels_model_baseline):
                 labels_model_baseline[dataset_mask_our]['label'], 
                 labels_model_baseline[dataset_mask_our]['prob']
             )
-            mean, lower, upper = bootstrap_auroc_ci(
-                labels_model_baseline[dataset_mask_our]['label'], 
-                labels_model_baseline[dataset_mask_our]['prob']
-            )
+            # mean, lower, upper = bootstrap_auroc_ci(
+            #     labels_model_baseline[dataset_mask_our]['label'], 
+            #     labels_model_baseline[dataset_mask_our]['prob']
+            # )
             output.append({
                 'Dataset': dataset.replace('rf','MIT').upper(),
                 'auroc': auroc_our,
-                'lower': lower,
-                'upper': upper
+                # 'lower': lower,
+                # 'upper': upper
             })
         
         print()
@@ -223,9 +223,10 @@ def main():
     df_01noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise01.csv')))
     df_05noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise05.csv')))
     df_10noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv')))
+    df_25noise = load_and_prepare_data(pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise15.csv')))
     
-    for i, labels_model_baseline in enumerate([df_0, df_01noise, df_05noise, df_10noise]):
-        label_noise = [0, 0.01, 0.05, 0.1][i]
+    for i, labels_model_baseline in enumerate([df_0, df_05noise, df_10noise, df_25noise]):
+        label_noise = [0, 0.05, 0.1, 0.15][i]
         label_noise_pre = label_noise
         ## represents percentage of positive class, first calcualte the proportion of positives to negatives 
         prop_positive = labels_model_baseline['label'].mean()
@@ -233,7 +234,7 @@ def main():
         label_noise = label_noise / prop_ratio
         print(f'Label noise: {label_noise}')
         labels_model_baseline_noisy = labels_model_baseline.copy()
-        labels_model_baseline_noisy['label'] = labels_model_baseline_noisy['label'].apply(lambda x: flip_label(x, label_noise, only_if_label_is_0=True))
+        # labels_model_baseline_noisy['label'] = labels_model_baseline_noisy['label'].apply(lambda x: flip_label(x, label_noise, only_if_label_is_0=True))
         # Evaluate per-dataset performance
         print("\n3. Evaluating per-dataset performance...")
         output = evaluate_per_dataset_performance(labels_model_baseline_noisy)
@@ -243,7 +244,7 @@ def main():
         results.append(output)
     df = pd.concat(results)
     df['formatted'] = df.apply(
-        lambda row: f"{row['auroc']:.3f} [{row['lower']:.3f} - {row['upper']:.3f}]", 
+        lambda row: f"{row['auroc']:.3f}", 
         axis=1
     )
     dfp = df.pivot(index='label_noise', columns='Dataset', values='auroc')
@@ -254,10 +255,15 @@ def main():
 
     for col in dfp.columns:
         df2p[col] = np.round(dfp[col] - og_auroc[col], 3)
+        
 
-    df2p.iloc[0] = dfp.iloc[0].round(3)
+    df2p['Average'] = df2p.mean(axis=1)
+    df2p = (df2p * 100).round(1)
+    for col in df2p.columns:
+        df2p[col] = df2p[col].apply(lambda x: f"{x}%")
+    # df2p.iloc[0] = dfp.iloc[0].round(3)
     df2p.index.name = 'Label Noise %'
-    dfi.export(df2p, 'label_noise_sensitivity_v3.png')
+    dfi.export(df2p, 'label_noise_sensitivity_v4.png')
     print('done')
     
 if __name__ == "__main__":

@@ -31,7 +31,9 @@ def load_and_prepare_data():
     # Load datasets
     df = pd.read_csv(os.path.join(CSV_DIR,'df_baseline.csv'))
     df_eeg = pd.read_csv(os.path.join(CSV_DIR,'df_baseline_eeg.csv'))
-    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
+    # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv'))
+    labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_2940_all_noise25.csv'))
     df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
     
     # Prepare sleep stage features dataset
@@ -551,11 +553,11 @@ def main():
             negative_labels = all_results[all_results['dataset'] == dataset][all_results['label'] == 0].copy() 
             total_positive = len(positive_labels)
             ## For balanced, uncomment this:
-            # negative_labels = negative_labels.sample(n=total_positive, replace=False)
+            negative_labels = negative_labels.sample(n=total_positive, replace=False)
             all_rows.append(pd.concat([positive_labels, negative_labels])) 
 
         all_results = pd.concat(all_rows).reset_index(drop=True)
-    bp() 
+    
     # labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
     #     'pred': 'mean', 
     #     'dataset': 'first', 
@@ -565,7 +567,7 @@ def main():
     # Evaluate per-dataset performance
     print("\n3. Evaluating per-dataset performance...")
     evaluate_per_dataset_performance(all_results)
-    
+    bp() 
     # Evaluate overall performance 
     # print("\n4. Evaluating overall performance...")
     # evaluate_overall_performance(result_sleep_stage, result_eeg, labels_model_baseline)
