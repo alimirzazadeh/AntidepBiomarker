@@ -190,7 +190,6 @@ def load_and_prepare_data():
     labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all.csv'))
     # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_3920_all_noise10.csv'))
     # labels = pd.read_csv(os.path.join(CSV_DIR,'inference_v6emb_2940_all_noise25.csv'))
-    df_taxonomy = pd.read_csv(os.path.join(CSV_DIR,'antidep_taxonomy_all_datasets_v6.csv'))
     
     # Prepare sleep stage features dataset
     df = df.drop(columns=['dataset'])
@@ -212,28 +211,16 @@ def load_and_prepare_data():
         mask = labels['dataset'] == dataset
         labels.loc[mask, 'pid'] = labels.loc[mask, 'pid'].apply(lambda x: x[1:] if isinstance(x, str) and x else x)
     
-    # Merge with taxonomy data
-    labels_model_baseline = pd.merge(labels, df_taxonomy, on='filename', how='inner')
-    # labels_model_baseline = labels_model_baseline.groupby(['pid', 'taxonomy']).agg({
-    #     'pred': 'mean', 
-    #     'dataset': 'first', 
-    #     'label': 'first', 
-    #     'fold': 'first'
-    # }).reset_index()
-    
-    # Convert logits to probabilities
-    labels_model_baseline['prob'] = 1 / (1 + np.exp(-labels_model_baseline['pred']))
-    
     # Merge labels with feature datasets
     labels_subset = labels[['filename', 'label', 'fold', 'dataset', 'mit_gender', 'mit_age']]
     df = df.merge(labels_subset, on='filename', how='inner')
     df_eeg = df_eeg.merge(labels_subset, on='filename', how='inner')
     
-    return df, df_eeg, labels_model_baseline, model1_cols, model2_cols
+    return df, df_eeg, model1_cols, model2_cols
 
 def get_datasets():
     df, df_eeg, _, _, _ = load_and_prepare_data()
-    bp() 
+    
     train_mask = (df['fold'] != fold) & (df['dataset'] != 'wsc')
     test_mask = (df['fold'] == fold) | (df['dataset'] == 'wsc')
     
