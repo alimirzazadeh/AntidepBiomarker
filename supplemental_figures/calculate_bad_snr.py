@@ -32,11 +32,11 @@ def get_bad_signal_time(filename, plot=False ):
     # wake_idx = wake_idx * 150
     # end_idx - wake_idx
     end_idx = start_idx + sleep_idx + 4 * 60 * 60 * 5
-    v1 = (data_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5)
+    v1 = (data_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] > 0.5)
     
     data2 = (data > 0.5).astype(float)
     data2_med = medfilt(data2, kernel_size=150*4*5 + 1)
-    v2 = (data2_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5)
+    v2 = (data2_med[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] > 0.5)
     
     v1 = fill_ends_with_1(v1)
     v2 = fill_ends_with_1(v2)
@@ -50,7 +50,7 @@ def get_bad_signal_time(filename, plot=False ):
         ax[2].set_title('Binary Filtered')
         # plt.savefig(f'../data/plots/snr_comparison_{filename}.png')
         plt.show()
-    return v1.sum() / (5 * 60), v2.sum() / (5 * 60)
+    return (v1 == 0).sum() / (5 * 60), (v2 == 0).sum() / (5 * 60)
 
 
 
