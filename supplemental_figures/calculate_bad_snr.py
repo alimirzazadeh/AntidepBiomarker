@@ -16,7 +16,7 @@ def get_bad_signal_time(filename):
     end_idx = start_stop_dict[filename][1]
     stage = np.load(f'/data/netmit/sleep_lab/rf/stage/{pid}/{filename}')['data']
     
-    data = medfilt(data, kernel_size=150*4*5)
+    data = medfilt(data, kernel_size=150*4*5 + 1)
     sleep_idx = list(stage > 0).index(True)
     wake_idx = list(stage > 0)[::-1].index(True)
     
