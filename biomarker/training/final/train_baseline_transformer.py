@@ -219,7 +219,7 @@ def load_and_prepare_data():
     return df, df_eeg, model1_cols, model2_cols
 
 def get_datasets():
-    df, df_eeg, _, _, _ = load_and_prepare_data()
+    df, df_eeg, _, _ = load_and_prepare_data()
     
     train_mask = (df['fold'] != fold) & (df['dataset'] != 'wsc')
     test_mask = (df['fold'] == fold) | (df['dataset'] == 'wsc')
