@@ -475,9 +475,9 @@ for step in tqdm(range(num_steps)):
     
     if step % args.log_every_n_step == 0:
         epoch_loss = running_loss / (args.log_every_n_step) #len(train_loader)
-        epoch_loss_d = running_loss2/ (args.log_every_n_step) #len(train_loader)
+        # epoch_loss_d = running_loss2/ (args.log_every_n_step) #len(train_loader)
         
-        computed_metrics = metrics.compute_and_log_metrics(epoch_loss, hy_loss=epoch_loss_d) #loss3=epoch_loss3)
+        computed_metrics = metrics.compute_and_log_metrics(epoch_loss) #, hy_loss=epoch_loss_d) #loss3=epoch_loss3)
         logger(writer, computed_metrics, 'train', step )
         metrics.clear_metrics()
         
