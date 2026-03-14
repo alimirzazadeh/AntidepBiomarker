@@ -49,10 +49,18 @@ def extract_patient_cohorts(df):
     """
     # Patient 1033: Stopping Sertraline
     df_1033 = df[df['pid'] == '1033'].copy()
+    stable_period_pos_1033 = df_1033[df_1033['date'] < datetime.datetime(2022, 2, 1)]['pred']
+    print(f"Stable period positive 1033: {stable_period_pos_1033.std()}, total days: {len(stable_period_pos_1033)}")
     
     # Patient 1007: Starting Venlafaxine (filtered to before Sept 2021)
     df_1007 = df[df['pid'] == '1007'].copy()
     df_1007 = df_1007[df_1007['date'] < datetime.datetime(2021, 9, 1)]
+    
+    stable_period_neg_1007 = df_1007[df_1007['date'] <= datetime.datetime(2020, 12, 15)]['pred']
+    stable_period_pos_1007 = df_1007[df_1007['date'] > datetime.datetime(2021, 1, 28)]['pred']
+    print(f"Stable period negative 1007: {stable_period_neg_1007.std()}, total days: {len(stable_period_neg_1007)}")
+    print(f"Stable period positive 1007: {stable_period_pos_1007.std()}, total days: {len(stable_period_pos_1007)}")
+    print(f"Mean stable period: {np.mean([stable_period_neg_1007.std(), stable_period_pos_1007.std()])}")
     
     # Patient 1022: Starting Fluoxetine with known adherence issues
     df_1022 = df[df['pid'] == '1022'].copy()
@@ -60,6 +68,12 @@ def extract_patient_cohorts(df):
     # Patient NIHYM875FLXFF: Starting Fluoxetine (filtered time window)
     df_xff = df[df['pid'] == 'NIHYM875FLXFF'].copy()
     df_xff = df_xff[df_xff['date'] >= datetime.datetime(2020, 8, 1)]
+    
+    stable_period_neg_xff = df_xff[df_xff['date'] <= datetime.datetime(2021, 6, 10)]['pred']
+    stable_period_pos_xff = df_xff[df_xff['date'] > datetime.datetime(2021, 7, 10)]['pred']
+    print(f"Stable period negative xff: {stable_period_neg_xff.std()}, total days: {len(stable_period_neg_xff)}")
+    print(f"Stable period positive xff: {stable_period_pos_xff.std()}, total days: {len(stable_period_pos_xff)}")
+    print(f"Mean stable period: {np.mean([stable_period_neg_xff.std(), stable_period_pos_xff.std()])}")
     
     # Apply additional filtering to remove edge effects (90 days from start/end)
     min_xff = df_xff['date'].min() + datetime.timedelta(days=90)
@@ -199,7 +213,7 @@ def main():
         print(f"  {i+1}. {title}: {len(cohort)} observations ({date_range})")
     
     print("\nCreating patient trajectory visualization...")
-    save_path = os.path.join('figure_5.png')
+    save_path = os.path.join('figure_5_v2.png')
     create_patient_trajectory_plot(cohorts, titles, save_path)
     
     print("Analysis completed successfully!")

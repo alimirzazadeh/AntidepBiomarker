@@ -302,7 +302,7 @@ test_loader = DataLoader(testset, batch_size=batch_size*4, shuffle=False, num_wo
 
 
 
-model = BaselineViT(args.MAGE_INPUT_SIZE, args.feature_dim).to(device)
+model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
 print('Baseline VIT Model')
     
 
