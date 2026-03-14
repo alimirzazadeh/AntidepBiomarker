@@ -55,7 +55,7 @@ def get_bad_signal_time(filename, plot=False ):
 
 
 output = {}
-for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
+for filename in tqdm(df['filename'].values):
     filename = filename.split('/')[-1]
     bad_signal_time, bad_signal_time_binary = get_bad_signal_time(filename, plot=False)
     output[filename] = [bad_signal_time, bad_signal_time_binary]
@@ -63,4 +63,5 @@ for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
 output = pd.DataFrame.from_dict(output, orient='index', columns=['bad_signal_time', 'bad_signal_time_binary'])
 output = output.reset_index()
 output.columns = ['filename', 'bad_signal_time', 'bad_signal_time_binary']
+output = output[['filename', 'bad_signal_time']].copy() 
 output.to_csv('../data/bad_signal_time_1007.csv', index=False)
