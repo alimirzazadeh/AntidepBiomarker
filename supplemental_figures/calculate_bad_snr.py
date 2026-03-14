@@ -55,7 +55,7 @@ def get_bad_signal_time(filename, plot=False ):
 
 
 output = {}
-for filename in tqdm(df['filename'].values):
+for filename in tqdm(df[df['dataset'] == 'rf']['filename'].values):
     filename = filename.split('/')[-1]
     bad_signal_time, bad_signal_time_binary = get_bad_signal_time(filename, plot=False)
     output[filename] = [bad_signal_time, bad_signal_time_binary]
