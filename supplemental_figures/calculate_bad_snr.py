@@ -21,5 +21,7 @@ for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
     bad_signal_time = get_bad_signal_time(filename)
     output[filename] = bad_signal_time
 
-output = pd.DataFrame(output)
+#     raise ValueError("If using all scalar values, you must pass an index")
+# ValueError: If using all scalar values, you must pass an index
+output = pd.DataFrame(output.items(), columns=['filename', 'bad_signal_time'])
 output.to_csv('../data/bad_signal_time_1007.csv', index=False)
