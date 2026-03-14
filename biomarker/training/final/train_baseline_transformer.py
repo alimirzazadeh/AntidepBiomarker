@@ -1,3 +1,4 @@
+import pandas as pd
 import itertools
 import os
 import torch
@@ -86,7 +87,7 @@ np.random.seed(20)
 
 folder_path = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/"
 model_folder = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024"
-
+CSV_DIR = '../../../data/'
 RUN_PATH = '/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/'
 EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_V5.0.6_nohchsrftune_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
 
@@ -315,7 +316,7 @@ n_model = n_model.to(device)
 print("Total Trainable Parameters: {:,}".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
 
 pretrained = '' 
-exp_name = f"{args.label}_{dataset_name}_lr_{lr}_bs_{batch_size}_steps_{num_steps}_dpt_{args.dropout}_fold{fold}{pretrained}_heads{args.num_heads}_{add_name}_featuredim_{args.feature_dim}_numtokenheads_{args.num_token_heads}_{'trn_resmp' if args.training_resample else ''}_{'NOISE' if args.NOISE_PADDING else ''}_{'TAIL'+str(args.tail_length_vit) if args.tail_length_vit >=0 else ''}_wd_{str(round(args.weight_decay,4))}_{'focal'+str(round(args.gamma,2)) + str(round(args.alpha)) if args.focal_loss else 'bce'}"
+exp_name = f"BASELINE_{args.label}_{dataset_name}_lr_{lr}_bs_{batch_size}_steps_{num_steps}_dpt_{args.dropout}_fold{fold}{pretrained}_heads{args.num_heads}_{add_name}_featuredim_{args.feature_dim}_numtokenheads_{args.num_token_heads}_{'trn_resmp' if args.training_resample else ''}_{'NOISE' if args.NOISE_PADDING else ''}_{'TAIL'+str(args.tail_length_vit) if args.tail_length_vit >=0 else ''}_wd_{str(round(args.weight_decay,4))}_{'focal'+str(round(args.gamma,2)) + str(round(args.alpha)) if args.focal_loss else 'bce'}"
 
 if not os.path.exists(folder_path):
     os.makedirs(folder_path)
