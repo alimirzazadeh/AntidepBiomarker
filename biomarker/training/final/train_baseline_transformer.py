@@ -300,11 +300,13 @@ def get_datasets():
 
 
     
-
+model = BaselineViT(33).to(device)
+bp() 
 
 trainset, testset, num_features = get_datasets()
 
 args.MAGE_INPUT_SIZE = num_features
+model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
 
 print('Length of trainset: ', len(trainset))
 print('Length of testset: ', len(testset))
@@ -314,7 +316,7 @@ test_loader = DataLoader(testset, batch_size=batch_size*4, shuffle=False, num_wo
 
 
 
-model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
+
 print('Baseline VIT Model')
     
 
