@@ -24,7 +24,7 @@ def get_bad_signal_time(filename):
     # wake_idx = wake_idx * 150
     # end_idx - wake_idx
     end_idx = start_idx + sleep_idx + 4 * 60 * 60 * 5
-    return (data[start_idx + sleep_idx + 1 * 60 * 60 * 5:end_idx] < 0.5).sum() / (5 * 60)
+    return (data[start_idx + sleep_idx + int(0.25 * 60 * 60 * 5):end_idx] < 0.5).sum() / (5 * 60)
 
 output = {} 
 for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
