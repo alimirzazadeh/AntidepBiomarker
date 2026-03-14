@@ -23,7 +23,7 @@ def get_bad_signal_time(filename):
     sleep_idx = sleep_idx * 150
     # wake_idx = wake_idx * 150
     # end_idx - wake_idx
-    end_idx = sleep_idx + 4 * 60 * 60 * 5
+    end_idx = start_idx + sleep_idx + 4 * 60 * 60 * 5
     return (data[start_idx + sleep_idx:end_idx] < 0.5).sum() / (5 * 60)
 
 output = {} 
