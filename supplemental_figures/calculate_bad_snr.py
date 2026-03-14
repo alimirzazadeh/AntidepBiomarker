@@ -4,7 +4,8 @@ import pandas as pd
 from tqdm import tqdm
 from ipdb import set_trace as bp
 from tqdm import tqdm
-
+## medfilt
+from scipy.signal import medfilt
 start_stop_dict = np.load('/data/netmit/sleep_lab/rf/start_end_idx_padded.npz')
 df = pd.read_csv('../data/inference_v6emb_3920_all.csv')
 
@@ -14,7 +15,8 @@ def get_bad_signal_time(filename):
     start_idx = start_stop_dict[filename][0]
     end_idx = start_stop_dict[filename][1]
     stage = np.load(f'/data/netmit/sleep_lab/rf/stage/{pid}/{filename}')['data']
-
+    
+    data = medfilt(data, kernel_size=150*4*5)
     sleep_idx = list(stage > 0).index(True)
     wake_idx = list(stage > 0)[::-1].index(True)
     
