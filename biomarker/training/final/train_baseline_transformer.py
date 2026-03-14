@@ -301,6 +301,7 @@ def get_datasets():
 
     
 model = BaselineViT(33).to(device)
+model(torch.randn(4, 33).to(device))
 bp() 
 
 trainset, testset, num_features = get_datasets()
