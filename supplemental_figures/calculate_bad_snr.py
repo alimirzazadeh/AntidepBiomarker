@@ -57,8 +57,8 @@ def get_bad_signal_time(filename, plot=False ):
 output = {} 
 for filename in tqdm(df[df['pid'] == '1007']['filename'].values):
     filename = filename.split('/')[-1]
-    bad_signal_time, bad_signal_time_binary = get_bad_signal_time(filename, plot=True)
-    bp() 
+    bad_signal_time, bad_signal_time_binary = get_bad_signal_time(filename, plot=False)
+
     output[filename] = [bad_signal_time, bad_signal_time_binary]
 
 #     raise ValueError("If using all scalar values, you must pass an index")
