@@ -42,11 +42,11 @@ class BaselineViT(nn.Module):
         
         args = Namespace()
         args.num_layers_vit = 4 
-        args.feature_dim = 128 
+        args.feature_dim = 32 
         args.MAGE_INPUT_SIZE = num_features
         args.num_heads = 4 
         args.fc1_size = 128
-        args.dropout = 0.5 
+        args.dropout = 0.1
         args.num_classes = 1
         args.fc2_size = -1
         args.num_tokens = 1 
