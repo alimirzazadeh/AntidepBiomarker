@@ -265,10 +265,10 @@ def get_datasets():
     test_features_eeg = (test_features_eeg - feature_mean_eeg) / (feature_std_eeg + 1e-8)
     
     
-    train_set = np.nan_to_num(train_set, nan=0.0, posinf=0.0, neginf=0.0)
-    test_set = np.nan_to_num(test_set, nan=0.0, posinf=0.0, neginf=0.0)
-    train_set_eeg = np.nan_to_num(train_set_eeg, nan=0.0, posinf=0.0, neginf=0.0)
-    test_set_eeg = np.nan_to_num(test_set_eeg, nan=0.0, posinf=0.0, neginf=0.0)
+    train_features = np.nan_to_num(train_features, nan=0.0, posinf=0.0, neginf=0.0)
+    test_features = np.nan_to_num(test_features, nan=0.0, posinf=0.0, neginf=0.0)
+    train_features_eeg = np.nan_to_num(train_features_eeg, nan=0.0, posinf=0.0, neginf=0.0)
+    test_features_eeg = np.nan_to_num(test_features_eeg, nan=0.0, posinf=0.0, neginf=0.0)
     
     if USE_ONLY_STAGE_FEATURES:
         num_features = train_features.shape[1]
@@ -399,7 +399,7 @@ for fold in range(0,1):
     train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=20, drop_last=True )
     test_loader = DataLoader(testset, batch_size=batch_size*4, shuffle=False, num_workers=20)
 
-
+    print(next(iter(train_loader))[0].sum(dim=0))
 
 
     print('Baseline VIT Model')
