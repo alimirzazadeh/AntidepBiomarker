@@ -472,7 +472,7 @@ for fold in range(0,1):
         else:
             if scheduler is None:
                 if not args.tuning:
-                    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, int(args.num_steps * (1-lr_warmup_prop)), eta_min=0)
+                    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, int(args.num_steps * (1-lr_warmup_prop)), eta_min=0.00001)
                 else:
                     scheduler = None
 
