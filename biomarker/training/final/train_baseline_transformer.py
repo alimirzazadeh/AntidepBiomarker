@@ -328,7 +328,7 @@ for fold in range(0,1):
 
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    USE_ONLY_STAGE_FEATURES = True 
+    USE_ONLY_STAGE_FEATURES = False 
         
     # args = parser.parse_args()
     lr = args.lr
