@@ -281,7 +281,7 @@ def get_datasets():
 
 
 
-for fold in range(1,4):
+for fold in range(0,1):
     torch.manual_seed(20)
     np.random.seed(20)
 
@@ -330,7 +330,7 @@ for fold in range(1,4):
     #num_folds = args.num_folds
     fold = args.fold
     add_name = args.add_name
-    args.feature_dim = 32
+    args.feature_dim = 128
 
     dpt = args.dropout
     dpt_str = f"_{dpt}"
