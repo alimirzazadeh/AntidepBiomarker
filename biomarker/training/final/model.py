@@ -41,10 +41,10 @@ class BaselineViT(nn.Module):
         # 'natural_reweight': False, 'black_oversample': 0, 'minority_pos_oversample': 0, 'balanced_medications_per_fold': False, 'num_datasets': 1}
         
         args = Namespace()
-        args.num_layers_vit = 4 
+        args.num_layers_vit = 8
         args.feature_dim = 32 
         args.MAGE_INPUT_SIZE = num_features
-        args.num_heads = 4 
+        args.num_heads = 8
         args.fc1_size = 128
         args.dropout = 0.1
         args.num_classes = 1
