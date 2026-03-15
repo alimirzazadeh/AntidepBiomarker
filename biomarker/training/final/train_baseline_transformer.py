@@ -255,13 +255,15 @@ def get_datasets():
     train_features = (train_features - feature_mean) / (feature_std + 1e-8)
     test_features = (test_features - feature_mean) / (feature_std + 1e-8)
     
+    train_features_eeg = train_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    test_features_eeg = test_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    
+    
     feature_mean_eeg = np.nanmean(train_features_eeg, axis=0)
     feature_std_eeg = np.nanstd(train_features_eeg, axis=0)
     train_features_eeg = (train_features_eeg - feature_mean_eeg) / (feature_std_eeg + 1e-8)
     test_features_eeg = (test_features_eeg - feature_mean_eeg) / (feature_std_eeg + 1e-8)
     
-    train_features_eeg = train_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
-    test_features_eeg = test_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
     
     train_set = np.nan_to_num(train_set, nan=0.0, posinf=0.0, neginf=0.0)
     test_set = np.nan_to_num(test_set, nan=0.0, posinf=0.0, neginf=0.0)
