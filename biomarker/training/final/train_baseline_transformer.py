@@ -181,7 +181,7 @@ def load_and_prepare_data():
     
     # Prepare EEG features dataset
     df_eeg = df_eeg.drop(columns=['dataset'])
-    df_eeg = df_eeg.rename(columns = {key : key + '_eeg' for key in df_eeg.columns})
+    df_eeg = df_eeg.rename(columns = {key : key + '_eeg' for key in df_eeg.columns if key != 'filename'})
     df_eeg = df_eeg.merge(df, on='filename', how='inner')
     model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
