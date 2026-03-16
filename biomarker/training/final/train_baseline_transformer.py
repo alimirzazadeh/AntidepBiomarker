@@ -178,7 +178,7 @@ def load_and_prepare_data():
     model1_cols = [col for col in df.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
     # Prepare EEG features dataset
-    df_eeg = df_eeg.merge(df, on='filename', how='inner')
+    # df_eeg = df_eeg.merge(df, on='filename', how='inner')
     df_eeg = df_eeg.drop(columns=['dataset'])
     model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
@@ -329,7 +329,7 @@ for fold in range(0,1):
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.lr = 1e-4
 
-    USE_ONLY_STAGE_FEATURES = True 
+    USE_ONLY_STAGE_FEATURES = False 
         
     # args = parser.parse_args()
     lr = args.lr
