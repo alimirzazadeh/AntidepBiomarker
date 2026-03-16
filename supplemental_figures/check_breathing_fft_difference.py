@@ -9,10 +9,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from scipy import stats
-from ipdb import set_trace as bp
+from scipy.signal import stft
+
 # --- Config ---
 datasets = ['mros', 'wsc', 'shhs', 'cfs']
 BREATHING_FS = 10   # Hz
+FREQ_RESOLUTION = 0.001  # Hz per bin -> nperseg = fs / df for STFT
+NPERSEG = int(BREATHING_FS / FREQ_RESOLUTION)  # 10000 samples = 1000 s window
 STAGE_EPOCH_SEC = 30
 SAMPLES_PER_STAGE_EPOCH = BREATHING_FS * STAGE_EPOCH_SEC  # 300
 STAGE_PREFIX = '/data/netmit/wifall/ADetect/data/{dataset}/stage/'
@@ -88,16 +91,16 @@ def load_breathing_and_stage(filename, dataset):
     return sleep_breathing, np.sum(is_sleep)
 
 
-def compute_fft_magnitude(signal, fs=BREATHING_FS):
-    """One-sided FFT magnitude spectrum (real signal)."""
-    n = len(signal)
-    if n == 0:
+def compute_spectrum_stft(signal, fs=BREATHING_FS, nperseg=NPERSEG):
+    """
+    STFT with fixed frequency resolution (df = fs/nperseg), then average magnitude over time.
+    Returns (freqs, mag) with mag shape (n_freq,) and freqs in Hz.
+    """
+    if len(signal) < nperseg:
         return None, None
-    windowed = signal * np.hanning(n)
-    spec = np.fft.rfft(windowed)
-    mag = np.abs(spec) / n
-    freqs = np.fft.rfftfreq(n, 1.0 / fs)
-    return freqs, mag
+    f, t, Zxx = stft(signal, fs=fs, nperseg=nperseg, window='hann')
+    mag = np.abs(Zxx).mean(axis=1)  # average over time -> one spectrum
+    return f, mag
 
 
 def mean_percent_difference(observed, expected):
@@ -131,14 +134,16 @@ for file in tqdm(all_antideps, desc='Antidep'):
     dataset = get_dataset(file)
     if not dataset:
         continue
-    bp() 
     fold = int(df[df['filename'] == file]['fold'].values[0]) if dataset != 'wsc' else random.randint(0, 3)
     breath_sleep, _ = load_breathing_and_stage(file, dataset)
-    if breath_sleep is None or len(breath_sleep) < SAMPLES_PER_STAGE_EPOCH:
+    if breath_sleep is None or len(breath_sleep) < NPERSEG:
         continue
-    freqs, mag = compute_fft_magnitude(breath_sleep)
+    freqs, mag = compute_spectrum_stft(breath_sleep)
     if mag is None:
         continue
+    bp() 
+    mask = (freqs >= 0.1) & (freqs <= 1)
+    freqs, mag = freqs[mask], mag[mask]
     if freq_axis is None:
         freq_axis = freqs
     antidep_fft.append(mag)
@@ -149,11 +154,13 @@ for file in tqdm(all_controls, desc='Control'):
         continue
     fold = int(df[df['filename'] == file]['fold'].values[0]) if dataset != 'wsc' else random.randint(0, 3)
     breath_sleep, _ = load_breathing_and_stage(file, dataset)
-    if breath_sleep is None or len(breath_sleep) < SAMPLES_PER_STAGE_EPOCH:
+    if breath_sleep is None or len(breath_sleep) < NPERSEG:
         continue
-    freqs, mag = compute_fft_magnitude(breath_sleep)
+    freqs, mag = compute_spectrum_stft(breath_sleep)
     if mag is None:
         continue
+    mask = (freqs >= 0.1) & (freqs <= 1)
+    mag = mag[mask]
     control_fft.append(mag)
 
 if not antidep_fft or not control_fft:
