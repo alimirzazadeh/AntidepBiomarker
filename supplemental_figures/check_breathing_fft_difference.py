@@ -142,7 +142,6 @@ for file in tqdm(all_antideps, desc='Antidep'):
     freqs, mag = compute_spectrum_stft(breath_sleep)
     if mag is None:
         continue
-    bp() 
     mask = (freqs >= 0.1) & (freqs <= 1)
     freqs, mag = freqs[mask], mag[mask]
     if freq_axis is None:
@@ -161,7 +160,7 @@ for file in tqdm(all_controls, desc='Control'):
     if mag is None:
         continue
     mask = (freqs >= 0.1) & (freqs <= 1)
-    mag = mag[mask]
+    freqs, mag = freqs[mask], mag[mask]
     control_fft.append(mag)
 
 if not antidep_fft or not control_fft:
@@ -169,6 +168,7 @@ if not antidep_fft or not control_fft:
 
 antidep_fft = np.stack(antidep_fft)
 control_fft = np.stack(control_fft)
+bp() 
 assert antidep_fft.shape[1] == control_fft.shape[1] == len(freq_axis)
 
 # --- Cohort comparison ---
