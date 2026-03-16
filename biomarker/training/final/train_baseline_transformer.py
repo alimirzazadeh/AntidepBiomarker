@@ -335,7 +335,7 @@ for fold in range(0,1):
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.lr = 1e-4
 
-    USE_ONLY_STAGE_FEATURES = False 
+    USE_ONLY_STAGE_FEATURES = True 
         
     # args = parser.parse_args()
     lr = args.lr
@@ -423,7 +423,7 @@ for fold in range(0,1):
     print("Total Trainable Parameters: {:,}".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
 
     pretrained = '' 
-    exp_name = f"BASELINE_fold{fold}_{datetime.now().strftime('%Y%m%d-%H%M%S')}" #{args.label}_{dataset_name}_lr_{lr}_bs_{batch_size}_steps_{num_steps}_dpt_{args.dropout}_fold{fold}{pretrained}_heads{args.num_heads}_{add_name}_featuredim_{n_model.model.args.feature_dim}_numtokenheads_{args.num_token_heads}_{'trn_resmp' if args.training_resample else ''}_{'NOISE' if args.NOISE_PADDING else ''}_{'TAIL'+str(args.tail_length_vit) if args.tail_length_vit >=0 else ''}_wd_{str(round(args.weight_decay,4))}_{'focal'+str(round(args.gamma,2)) + str(round(args.alpha)) if args.focal_loss else 'bce'}"
+    exp_name = f"BASELINE_fold{fold}_{'EEG+STAGE' if not USE_ONLY_STAGE_FEATURES else 'STAGE'}_{datetime.now().strftime('%Y%m%d-%H%M%S')}" #{args.label}_{dataset_name}_lr_{lr}_bs_{batch_size}_steps_{num_steps}_dpt_{args.dropout}_fold{fold}{pretrained}_heads{args.num_heads}_{add_name}_featuredim_{n_model.model.args.feature_dim}_numtokenheads_{args.num_token_heads}_{'trn_resmp' if args.training_resample else ''}_{'NOISE' if args.NOISE_PADDING else ''}_{'TAIL'+str(args.tail_length_vit) if args.tail_length_vit >=0 else ''}_wd_{str(round(args.weight_decay,4))}_{'focal'+str(round(args.gamma,2)) + str(round(args.alpha)) if args.focal_loss else 'bce'}"
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
