@@ -101,12 +101,12 @@ def run_train_step(n_model, trainloader):
         y_label = y_batch['label']
         y_label = y_label.to(device)
         y_dataset = y_batch['dataset']
-        y_dataset_emb = torch.tensor(transform_modality(y_dataset), dtype=torch.int64, device=device) if args.modality_input else None
+        
 
         t5_emb = None 
         
             
-        y_pred = n_model(x=X_batch, t5_emb=t5_emb, modality=y_dataset_emb) 
+        y_pred = n_model(x=X_batch, t5_emb=t5_emb) 
 
         loss = loss_fn(y_pred.squeeze(1), y_label.float())
         optimizer.zero_grad()
@@ -327,6 +327,7 @@ for fold in range(0,1):
             setattr(args, attr, default_val)
 
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    args.lr = 1e-4
 
     USE_ONLY_STAGE_FEATURES = False 
         
@@ -343,7 +344,7 @@ for fold in range(0,1):
     #num_folds = args.num_folds
     fold = args.fold
     add_name = args.add_name
-    args.feature_dim = 128
+    args.feature_dim = 32
 
     dpt = args.dropout
     dpt_str = f"_{dpt}"
