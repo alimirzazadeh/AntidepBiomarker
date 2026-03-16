@@ -25,6 +25,7 @@ import sys
 import random
 ### A more updated version of train_antidep_with_rf_consistency (with filtered dataset)
 USE_ONLY_STAGE_FEATURES = False 
+SUBSET= False
 
 class BinaryFocalLoss(nn.Module):
     ## AM2024: loss to focus on harder case examples
@@ -347,7 +348,7 @@ for fold in range(0,4):
     num_class_name = f"class_{num_classes}"
     batch_size = args.bs
     debug = args.debug
-    num_steps = 4000 #6000 #args.num_steps
+    num_steps = 6000 #6000 #args.num_steps
     #num_folds = args.num_folds
     fold = args.fold
     add_name = args.add_name
@@ -398,7 +399,8 @@ for fold in range(0,4):
         
     trainset, testset, num_features, eeg_mask = get_datasets()
     
-    trainset = torch.utils.data.Subset(trainset, range(48*8))
+    if SUBSET:
+        trainset = torch.utils.data.Subset(trainset, range(48*8))
 
     args.MAGE_INPUT_SIZE = num_features
     model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
@@ -424,7 +426,7 @@ for fold in range(0,4):
     print("Total Trainable Parameters: {:,}".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
 
     pretrained = '' 
-    exp_name = f"BASELINE_fold{fold}_{'EEG+STAGE' if not USE_ONLY_STAGE_FEATURES else 'STAGE'}_FINAL" #{datetime.now().strftime('%Y%m%d-%H%M%S')}" #{args.label}_{dataset_name}_lr_{lr}_bs_{batch_size}_steps_{num_steps}_dpt_{args.dropout}_fold{fold}{pretrained}_heads{args.num_heads}_{add_name}_featuredim_{n_model.model.args.feature_dim}_numtokenheads_{args.num_token_heads}_{'trn_resmp' if args.training_resample else ''}_{'NOISE' if args.NOISE_PADDING else ''}_{'TAIL'+str(args.tail_length_vit) if args.tail_length_vit >=0 else ''}_wd_{str(round(args.weight_decay,4))}_{'focal'+str(round(args.gamma,2)) + str(round(args.alpha)) if args.focal_loss else 'bce'}"
+    exp_name = f"BASELINE_fold{fold}_{'EEG+STAGE' if not USE_ONLY_STAGE_FEATURES else 'STAGE'}_{'SUBSET' if SUBSET else 'FULL'}_FINAL" #{datetime.now().strftime('%Y%m%d-%H%M%S')}" #{args.label}_{dataset_name}_lr_{lr}_bs_{batch_size}_steps_{num_steps}_dpt_{args.dropout}_fold{fold}{pretrained}_heads{args.num_heads}_{add_name}_featuredim_{n_model.model.args.feature_dim}_numtokenheads_{args.num_token_heads}_{'trn_resmp' if args.training_resample else ''}_{'NOISE' if args.NOISE_PADDING else ''}_{'TAIL'+str(args.tail_length_vit) if args.tail_length_vit >=0 else ''}_wd_{str(round(args.weight_decay,4))}_{'focal'+str(round(args.gamma,2)) + str(round(args.alpha)) if args.focal_loss else 'bce'}"
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
