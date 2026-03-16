@@ -185,7 +185,7 @@ ax.set_xticks(bpm_ticks / 60.0)   # Hz = BPM / 60
 ax.set_xticklabels([str(b) for b in bpm_ticks])
 ax.set_xlim(0.1666665, 1)
 ax.set_xlabel('Breathing rate (BPM)', fontsize=12)
-ax.set_ylabel('Percent difference in FFT magnitude\n(Antidepressants − Controls)', fontsize=12)
+ax.set_ylabel('Percent difference in Power\n(Antidepressants − Controls)', fontsize=12)
 ax.set_ylim(-15, 30)
 plt.tight_layout()
 plt.savefig('check_breathing_fft_difference.png', dpi=300, bbox_inches='tight')
