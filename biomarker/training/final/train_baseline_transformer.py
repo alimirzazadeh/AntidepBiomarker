@@ -83,7 +83,7 @@ class JSONToObject:
 
 
 
-def run_train_step(n_model, trainloader):
+def run_train_step(n_model, trainloader, mask=False):
     try:
         X_batch, y_batch = next(trainloader)
     except:
@@ -92,7 +92,9 @@ def run_train_step(n_model, trainloader):
     
     X_batch = X_batch.to(device)
     
-    
+    if mask:
+        bp() 
+        X_batch[:, eeg_mask] = 0
     
     
     
@@ -178,8 +180,9 @@ def load_and_prepare_data():
     model1_cols = [col for col in df.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
     # Prepare EEG features dataset
-    # df_eeg = df_eeg.merge(df, on='filename', how='inner')
     df_eeg = df_eeg.drop(columns=['dataset'])
+    df_eeg = df_eeg.rename(columns = {key : key + '_eeg' for key in df_eeg.columns})
+    df_eeg = df_eeg.merge(df, on='filename', how='inner')
     model2_cols = [col for col in df_eeg.columns if col not in ['filename', 'fold', 'dataset', 'label']]
     
     # Process our model predictions
@@ -247,7 +250,9 @@ def get_datasets():
     test_set_labels = test_set['label'].values
     
     # Prepare feature matrices
-    train_features = train_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    train_features = train_set.drop(columns=['filename', 'fold', 'dataset', 'label'])
+    eeg_mask = np.array([col for col in train_features.columns if col.endswith('_eeg')])
+    train_features = train_features.values
     test_features = test_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
     
     feature_mean = np.nanmean(train_features, axis=0)
@@ -287,7 +292,7 @@ def get_datasets():
         test_dataset = FeaturesAndDictDataset(
             test_features_eeg, test_y, test_datasets, test_filenames
         )
-        return train_dataset, test_dataset, num_features
+        return train_dataset, test_dataset, num_features, eeg_mask
     ## train_features, train_y, test_features, test_y 
 
 
@@ -340,7 +345,7 @@ for fold in range(0,1):
     num_class_name = f"class_{num_classes}"
     batch_size = args.bs
     debug = args.debug
-    num_steps = args.num_steps
+    num_steps = 6000 #args.num_steps
     #num_folds = args.num_folds
     fold = args.fold
     add_name = args.add_name
@@ -389,10 +394,10 @@ for fold in range(0,1):
 
 
         
-    trainset, testset, num_features = get_datasets()
+    trainset, testset, num_features, eeg_mask = get_datasets()
     
     trainset = torch.utils.data.Subset(trainset, range(48*8))
-
+    bp() 
     args.MAGE_INPUT_SIZE = num_features
     model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
 
@@ -464,7 +469,14 @@ for fold in range(0,1):
     for step in tqdm(range(num_steps)):
         step += 1 
         
-        
+        if not USE_ONLY_STAGE_FEATURES:
+            mask_ratio = 1 - step / 3000
+            if random.random() < mask_ratio:
+                mask = True 
+            else:
+                mask = False
+        else:
+            mask = False
         rl1 = run_train_step(n_model, trainloader)
         
 
