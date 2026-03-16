@@ -148,7 +148,7 @@ for file in tqdm(all_antideps, desc='Antidep'):
         freq_axis = freqs
     antidep_fft.append(mag)
 
-for file in tqdm(all_controls[::10], desc='Control'):
+for file in tqdm(all_controls, desc='Control'):
     dataset = get_dataset(file)
     if not dataset:
         continue
@@ -180,7 +180,7 @@ ax.plot(freq_axis, mean_diff, color='black', ls='dashed', label='Sleep (antidep 
 ax.fill_between(freq_axis, lower, upper, alpha=0.2, color='black')
 ax.axhline(0, color='gray', ls='dotted', alpha=0.8)
 # X-axis: 0–1 Hz, tick labels in BPM (1 Hz = 60 BPM)
-ax.set_xlim(0, 1)
+ax.set_xlim(1/12, 1)
 bpm_ticks = np.arange(0, 61, 10)  # 0, 10, 20, ..., 60 BPM
 ax.set_xticks(bpm_ticks / 60.0)   # Hz = BPM / 60
 ax.set_xticklabels([str(b) for b in bpm_ticks])
