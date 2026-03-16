@@ -251,7 +251,6 @@ def get_datasets():
     
     # Prepare feature matrices
     train_features = train_set.drop(columns=['filename', 'fold', 'dataset', 'label'])
-    eeg_mask = np.array([col for col in train_features.columns if col.endswith('_eeg')])
     train_features = train_features.values
     test_features = test_set.drop(columns=['filename', 'fold', 'dataset', 'label']).values
     
@@ -260,8 +259,10 @@ def get_datasets():
     train_features = (train_features - feature_mean) / (feature_std + 1e-8)
     test_features = (test_features - feature_mean) / (feature_std + 1e-8)
     
-    train_features_eeg = train_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    train_features_eeg = train_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label'])
     test_features_eeg = test_set_eeg.drop(columns=['filename', 'fold', 'dataset', 'label']).values
+    eeg_mask = np.array([True if col.endswith('_eeg') else False for col in train_features_eeg.columns])
+    train_features_eeg = train_features_eeg.values
     
     
     feature_mean_eeg = np.nanmean(train_features_eeg, axis=0)
