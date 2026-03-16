@@ -148,7 +148,7 @@ for file in tqdm(all_antideps, desc='Antidep'):
         freq_axis = freqs
     antidep_fft.append(mag)
 
-for file in tqdm(all_controls, desc='Control'):
+for file in tqdm(all_controls[::10], desc='Control'):
     dataset = get_dataset(file)
     if not dataset:
         continue
