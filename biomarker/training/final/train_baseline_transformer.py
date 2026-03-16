@@ -22,7 +22,7 @@ from metrics import Metrics
 import numpy as np 
 torch.cuda.empty_cache()
 import sys 
-
+import random
 ### A more updated version of train_antidep_with_rf_consistency (with filtered dataset)
 
 class BinaryFocalLoss(nn.Module):
@@ -398,7 +398,7 @@ for fold in range(0,1):
     trainset, testset, num_features, eeg_mask = get_datasets()
     
     trainset = torch.utils.data.Subset(trainset, range(48*8))
-    bp() 
+
     args.MAGE_INPUT_SIZE = num_features
     model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
 
