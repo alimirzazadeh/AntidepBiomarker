@@ -93,7 +93,7 @@ def run_train_step(n_model, trainloader, mask=False):
     X_batch = X_batch.to(device)
     
     if mask:
-        bp() 
+        print(f'Masking EEG features with ratio: {eeg_mask.sum() / len(eeg_mask)}')
         X_batch[:, eeg_mask] = 0
     
     
