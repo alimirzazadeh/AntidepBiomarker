@@ -284,7 +284,7 @@ def get_datasets():
         test_dataset = FeaturesAndDictDataset(
             test_features, test_y, test_datasets, test_filenames
         )
-        return train_dataset, test_dataset, num_features
+        return train_dataset, test_dataset, num_features, None
     else:
         num_features = train_features_eeg.shape[1]
         train_dataset = FeaturesAndDictDataset(
