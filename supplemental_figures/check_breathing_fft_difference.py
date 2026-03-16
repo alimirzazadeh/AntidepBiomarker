@@ -180,13 +180,13 @@ ax.plot(freq_axis, mean_diff, color='black', ls='dashed', label='Sleep (antidep 
 ax.fill_between(freq_axis, lower, upper, alpha=0.2, color='black')
 ax.axhline(0, color='gray', ls='dotted', alpha=0.8)
 # X-axis: 0–1 Hz, tick labels in BPM (1 Hz = 60 BPM)
-ax.set_xlim(1/12, 1)
-bpm_ticks = np.arange(0, 61, 10)  # 0, 10, 20, ..., 60 BPM
+bpm_ticks = np.arange(10, 61, 10)  # 0, 10, 20, ..., 60 BPM
 ax.set_xticks(bpm_ticks / 60.0)   # Hz = BPM / 60
 ax.set_xticklabels([str(b) for b in bpm_ticks])
+ax.set_xlim(0.1666665, 1)
 ax.set_xlabel('Breathing rate (BPM)', fontsize=12)
 ax.set_ylabel('Percent difference in FFT magnitude\n(Antidepressants − Controls)', fontsize=12)
-ax.set_ylim(-25, 25)
+ax.set_ylim(-15, 30)
 plt.tight_layout()
 plt.savefig('check_breathing_fft_difference.png', dpi=300, bbox_inches='tight')
 plt.close()
