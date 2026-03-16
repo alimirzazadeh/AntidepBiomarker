@@ -175,7 +175,7 @@ assert antidep_fft.shape[1] == control_fft.shape[1] == len(freq_axis)
 mean_diff, lower, upper = bootstrap_percent_difference(antidep_fft, control_fft)
 
 # --- Plot ---
-fig, ax = plt.subplots(1, 1, figsize=(6.5, 3))
+fig, ax = plt.subplots(1, 1, figsize=(6.5, 5))
 ax.plot(freq_axis, mean_diff, color='black', ls='dashed', label='Sleep (antidep − control)')
 ax.fill_between(freq_axis, lower, upper, alpha=0.2, color='black')
 ax.axhline(0, color='gray', ls='dotted', alpha=0.8)
@@ -186,7 +186,7 @@ ax.set_xticks(bpm_ticks / 60.0)   # Hz = BPM / 60
 ax.set_xticklabels([str(b) for b in bpm_ticks])
 ax.set_xlabel('Breathing rate (BPM)', fontsize=12)
 ax.set_ylabel('Percent difference in FFT magnitude\n(Antidepressants − Controls)', fontsize=12)
-ax.set_ylim(np.nanpercentile(mean_diff, 1) - 5, np.nanpercentile(mean_diff, 99) + 5)
+ax.set_ylim(-25, 25)
 plt.tight_layout()
 plt.savefig('check_breathing_fft_difference.png', dpi=300, bbox_inches='tight')
 plt.close()
