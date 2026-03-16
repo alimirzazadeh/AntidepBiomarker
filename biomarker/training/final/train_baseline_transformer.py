@@ -390,6 +390,8 @@ for fold in range(0,1):
 
         
     trainset, testset, num_features = get_datasets()
+    
+    trainset = torch.utils.data.Subset(trainset, range(48*8))
 
     args.MAGE_INPUT_SIZE = num_features
     model = BaselineViT(args.MAGE_INPUT_SIZE).to(device)
