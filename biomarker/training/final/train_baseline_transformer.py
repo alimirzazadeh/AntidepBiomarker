@@ -478,7 +478,7 @@ for fold in range(0,1):
                 mask = False
         else:
             mask = False
-        rl1 = run_train_step(n_model, trainloader)
+        rl1 = run_train_step(n_model, trainloader, mask=mask)
         
 
         if step < args.num_steps * lr_warmup_prop:
