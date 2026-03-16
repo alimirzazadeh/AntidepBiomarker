@@ -20,7 +20,7 @@ BREATHING_PREFIX = '/data/netmit/wifall/ADetect/data/{dataset}/thorax/'  # adjus
 SLEEP_STAGES = [1, 2, 3, 4]  # N1, N2, N3, REM (during sleep, exclude wake/unknown)
 MIN_EPOCHS = 4 * 60 * 2   # at least 4 hours (same as original)
 
-df = pd.read_csv('../../data/master_dataset.csv')
+df = pd.read_csv('../data/master_dataset.csv')
 df = df[['filename', 'label', 'dataset', 'fold']]
 df = df[df['dataset'].isin(datasets)].groupby('filename').agg('first').reset_index()
 
