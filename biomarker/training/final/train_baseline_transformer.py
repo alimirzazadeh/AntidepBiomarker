@@ -26,6 +26,11 @@ import random
 ### A more updated version of train_antidep_with_rf_consistency (with filtered dataset)
 USE_ONLY_STAGE_FEATURES = False 
 SUBSET= False
+folder_path = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/"
+model_folder = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024"
+CSV_DIR = '../../../data/'
+RUN_PATH = '/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/'
+EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_V5.0.6_nohchsrftune_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
 
 class BinaryFocalLoss(nn.Module):
     ## AM2024: loss to focus on harder case examples
@@ -306,11 +311,7 @@ if __name__ == "__main__":
         torch.manual_seed(20)
         np.random.seed(20)
 
-        folder_path = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/"
-        model_folder = "/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024"
-        CSV_DIR = '../../../data/'
-        RUN_PATH = '/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/'
-        EXP_PATH = 'antidep_shhs1_shhs2_mros1_mros2_cfs_rf_hchs__wsc_lr_5e-05_bs_48_steps_4000_dpt_0.1_fold0_heads4_V5.0.6_nohchsrftune_featuredim_128_numtokenheads_4_trn_resmp___wd_0.01_bce'
+
 
 
         model_folder = os.path.join(RUN_PATH, EXP_PATH)
