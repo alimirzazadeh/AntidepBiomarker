@@ -25,6 +25,7 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import roc_auc_score
 from model import BaselineViT
 from train_baseline_transformer import get_datasets
+from ipdb import set_trace as bp
 
 # Local imports
 from model import MageEncodingViT
@@ -128,7 +129,8 @@ def parse_value(value, date, dataset):
 def create_prediction_dataframe(labels, fold):
     """Create dataframe with predictions and metadata."""
     df = pd.DataFrame.from_dict(labels, orient='columns')
-    df['filename'] = df['filepath']
+    bp() 
+    # df['filename'] = df['filepath']
     
     # Extract dataset information
     df['dataset'] = df['filename'].apply(
