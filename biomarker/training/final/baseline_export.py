@@ -155,14 +155,14 @@ def load_model_and_args(model_folder, checkpoint_epoch, most_recent=False):
     """Load model and arguments from checkpoint."""
     if most_recent:
         available_checkpoints = [
-            int(item.split('_')[-1].replace('.pt', '').replace('bce', ''))
+            int(item.split('_')[-1].replace('.pt', '').replace('FINAL', '').replace('bce', ''))
             for item in os.listdir(model_folder) 
             if item.endswith('.pt')
         ]
         checkpoint_epoch = max(available_checkpoints)
     else:
         available_checkpoints = np.array([
-            int(item.split('_')[-1].replace('.pt', '').replace('bce', ''))
+            int(item.split('_')[-1].replace('.pt', '').replace('FINAL', '').replace('bce', ''))
             for item in os.listdir(model_folder) 
             if item.endswith('.pt')
         ])
