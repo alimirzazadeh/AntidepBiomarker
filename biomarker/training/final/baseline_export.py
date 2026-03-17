@@ -211,8 +211,8 @@ def run_inference():
     
     # Configuration
     RUN_PATH = '/data/scratch/alimirz/2023/SIMON/TENSORBOARD_2024/'
-    EXP_PATH = 'BASELINE_fold0_STAGE_FULL_FINAL'
-    # EXP_PATH = 'BASELINE_fold0_EEG+STAGE_FULL_FINAL'
+    # EXP_PATH = 'BASELINE_fold0_STAGE_FULL_FINAL'
+    EXP_PATH = 'BASELINE_fold0_EEG+STAGE_FULL_FINAL'
 
     CHECKPOINT_EPOCH = 6000
     WHICH_FOLDS = [0, 1, 2, 3]
