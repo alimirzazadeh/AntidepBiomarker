@@ -247,7 +247,7 @@ def run_inference():
         
         # Create data loaders
         # train_loader, test_loader = create_dataloaders(args)
-        trainset, testset, num_features, eeg_mask = get_datasets(fold)
+        trainset, testset, num_features, eeg_mask = get_datasets(fold, USE_ONLY_STAGE_FEATURES=False if 'EEG+STAGE' in EXP_PATH else True)
     
         batch_size = 48
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

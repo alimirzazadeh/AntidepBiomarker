@@ -232,7 +232,7 @@ class FeaturesAndDictDataset(Dataset):
         )
 
 
-def get_datasets(fold):
+def get_datasets(fold, USE_ONLY_STAGE_FEATURES=False):
     df, df_eeg, _, _ = load_and_prepare_data()
     
     train_mask = (df['fold'] != fold) & (df['dataset'] != 'wsc')
@@ -398,7 +398,7 @@ if __name__ == "__main__":
 
 
             
-        trainset, testset, num_features, eeg_mask = get_datasets(fold)
+        trainset, testset, num_features, eeg_mask = get_datasets(fold, USE_ONLY_STAGE_FEATURES)
         
         if SUBSET:
             trainset = torch.utils.data.Subset(trainset, range(48*8))
