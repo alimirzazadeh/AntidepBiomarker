@@ -283,7 +283,7 @@ def run_inference():
                 y_batch['pred'] = list(outputs.flatten())
                 
                 # Create dataframe for this batch
-                batch_df = create_prediction_dataframe(args, y_batch, fold)
+                batch_df = create_prediction_dataframe(y_batch, fold)
                 
                 if dfs is None:
                     dfs = batch_df
