@@ -129,7 +129,6 @@ def parse_value(value, date, dataset):
 def create_prediction_dataframe(labels, fold):
     """Create dataframe with predictions and metadata."""
     df = pd.DataFrame.from_dict(labels, orient='columns')
-    bp() 
     # df['filename'] = df['filepath']
     
     # Extract dataset information
@@ -236,16 +235,7 @@ def run_inference():
         )
         
         # Load T5 embeddings if needed
-        if args.t5_demographics:
-            t5_emb_dict = np.load(
-                '/data/scratch/alimirz/DATA/T5_DEMOGRAPHICS/demographic_embeddings_v2.npz'
-            )
-        elif args.t5_demographics_nomean:
-            t5_emb_dict = np.load(
-                '/data/scratch/alimirz/DATA/T5_DEMOGRAPHICS/demographic_embeddings_v5_nomean_agenoise.npz'
-            )
-        else:
-            t5_emb_dict = None
+        t5_emb_dict = None
         
         # Create data loaders
         # train_loader, test_loader = create_dataloaders(args)
