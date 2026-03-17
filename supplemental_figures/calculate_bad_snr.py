@@ -65,6 +65,6 @@ for filename in tqdm(df[df['pid'].isin(['1007', '1022', 'NIHYM875FLXFF', '1033']
     filename = filename.split('/')[-1]
     versions = get_bad_signal_time(filename, plot=False)
     output[filename] = versions
-bp() 
+
 output = pd.DataFrame.from_dict(output, orient='index')
-output.to_csv('../data/bad_signal_time_1007.csv', index=False)
+output.reset_index(names='filename').to_csv('../data/bad_signal_time_4_patients.csv', index=False)
