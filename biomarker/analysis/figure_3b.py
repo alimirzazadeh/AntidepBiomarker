@@ -344,8 +344,10 @@ def main():
             except Exception as e:
                 print(f"Error analyzing {dataset} dataset: {e}")
                 continue
-    bp() 
-    
+
+    write_source_data_xlsx(df)
+    bp()
+
     if ONLY_SINGLE_MEDICATION:
         print(f"\nAnalyzing single medications only (threshold = {THRESHOLD})")
         analyze_single_medications(df)
@@ -353,8 +355,94 @@ def main():
     else:
         print(f"\nAnalyzing all medications including combinations")
         analyze_combination_medications(df)
-    
+
     print("Analysis completed successfully!")
+
+
+def write_source_data_xlsx(df):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    HEADER_FONT = Font(bold=True, color="FFFFFF")
+    SUB_FILL    = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    SUB_FONT    = Font(bold=True)
+
+    wb = Workbook()
+    controls = df[df['taxonomy'] == 'C']['pred'].round(3).values
+    available_meds = [m for m in MEDICATION_MAPPING
+                      if m in df['taxonomy'].values and ',' not in m]
+
+    # ── Sheet 1: Individual Medications ─────────────────────────────────────
+    ws1 = wb.active
+    ws1.title = "Individual Medications"
+
+    col_start = 1
+    for med_code in available_meds:
+        med_name = MEDICATION_MAPPING[med_code]
+        med_vals = df[df['taxonomy'] == med_code]['pred'].round(3).values
+
+        cell = ws1.cell(row=1, column=col_start, value=med_name)
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal='center')
+        ws1.merge_cells(start_row=1, start_column=col_start,
+                        end_row=1,   end_column=col_start + 1)
+
+        for j, lbl in enumerate(["Control", med_name]):
+            c = ws1.cell(row=2, column=col_start + j, value=lbl)
+            c.font = SUB_FONT
+            c.fill = SUB_FILL
+            c.alignment = Alignment(horizontal='center')
+
+        for ri in range(max(len(controls), len(med_vals))):
+            for j, arr in enumerate([controls, med_vals]):
+                ws1.cell(row=3 + ri, column=col_start + j,
+                         value=float(arr[ri]) if ri < len(arr) else None)
+
+        for j in range(2):
+            ws1.column_dimensions[get_column_letter(col_start + j)].width = 18
+        col_start += 3  # 2 data cols + 1 blank separator
+
+    # ── Sheet 2: Medication Types ────────────────────────────────────────────
+    ws2 = wb.create_sheet("Medication Types")
+
+    col_start = 1
+    for type_code, type_name in MEDICATION_TYPE_MAPPING.items():
+        type_mask = df['taxonomy'].apply(
+            lambda x: x.startswith(type_code) and ',' not in x
+        )
+        type_vals = df[type_mask]['pred'].round(3).values
+        if len(type_vals) == 0:
+            continue
+
+        cell = ws2.cell(row=1, column=col_start, value=type_name)
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal='center')
+        ws2.merge_cells(start_row=1, start_column=col_start,
+                        end_row=1,   end_column=col_start + 1)
+
+        for j, lbl in enumerate(["Control", type_name]):
+            c = ws2.cell(row=2, column=col_start + j, value=lbl)
+            c.font = SUB_FONT
+            c.fill = SUB_FILL
+            c.alignment = Alignment(horizontal='center')
+
+        for ri in range(max(len(controls), len(type_vals))):
+            for j, arr in enumerate([controls, type_vals]):
+                ws2.cell(row=3 + ri, column=col_start + j,
+                         value=float(arr[ri]) if ri < len(arr) else None)
+
+        for j in range(2):
+            ws2.column_dimensions[get_column_letter(col_start + j)].width = 18
+        col_start += 3
+
+    out_path = 'figure_3b_source_data.xlsx'
+    wb.save(out_path)
+    print(f'Saved {out_path}')
+
 
 if __name__ == "__main__":
     main()

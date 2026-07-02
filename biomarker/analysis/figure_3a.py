@@ -644,9 +644,65 @@ def main():
     # print("\n4. Evaluating overall performance...")
     # evaluate_overall_performance(result_sleep_stage, result_eeg, labels_model_baseline)
     
+    write_source_data_xlsx(result_sleep_stage, result_eeg, labels_model_baseline)
+
     print('\n' + '='*60)
     print('ANALYSIS COMPLETE')
     print('='*60)
+
+
+def write_source_data_xlsx(result_sleep, result_eeg, labels_our):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    HEADER_FONT = Font(bold=True, color="FFFFFF")
+    SUB_FILL    = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    SUB_FONT    = Font(bold=True)
+
+    wb = Workbook()
+    datasets = sorted(result_sleep['dataset'].unique())
+
+    for sheet_idx, (sheet_name, result) in enumerate([
+        ("Sleep Stage Model",       result_sleep),
+        ("EEG Model",               result_eeg),
+        ("Our Model (Respiration)", labels_our),
+    ]):
+        ws = wb.active if sheet_idx == 0 else wb.create_sheet(sheet_name)
+        ws.title = sheet_name
+
+        col_start = 1
+        for dataset in datasets:
+            ds = result[result['dataset'] == dataset]
+            ctrl = ds[ds['label'] == 0]['prob'].round(3).values
+            antd = ds[ds['label'] == 1]['prob'].round(3).values
+
+            cell = ws.cell(row=1, column=col_start, value=dataset.upper())
+            cell.font = HEADER_FONT
+            cell.fill = HEADER_FILL
+            cell.alignment = Alignment(horizontal='center')
+            ws.merge_cells(start_row=1, start_column=col_start,
+                           end_row=1,   end_column=col_start + 1)
+
+            for j, lbl in enumerate(["Control", "Antidepressant"]):
+                c = ws.cell(row=2, column=col_start + j, value=lbl)
+                c.font = SUB_FONT
+                c.fill = SUB_FILL
+                c.alignment = Alignment(horizontal='center')
+
+            for ri in range(max(len(ctrl), len(antd))):
+                for j, arr in enumerate([ctrl, antd]):
+                    ws.cell(row=3 + ri, column=col_start + j,
+                            value=float(arr[ri]) if ri < len(arr) else None)
+
+            for j in range(2):
+                ws.column_dimensions[get_column_letter(col_start + j)].width = 18
+            col_start += 3  # 2 data cols + 1 blank separator
+
+    out_path = 'figure_3a_source_data.xlsx'
+    wb.save(out_path)
+    print(f'Saved {out_path}')
 
 
 if __name__ == "__main__":

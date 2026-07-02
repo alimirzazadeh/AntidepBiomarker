@@ -1,0 +1,231 @@
+Figure 4 (a–e) — Consolidated exact p-values
+════════════════════════════════════════════════════════════════════════
+
+Statistical test             : Welch's independent samples t-test (equal_var=False)
+Directionality               : Two-sided
+Multiple comparisons correction : None applied
+Effect size                  : Cohen's d = (mean_a − mean_b) / sqrt((var_a + var_b) / 2)
+                               Positive d → group a has the higher model score
+
+════════════════════════════════════════════════════════════════════════
+FIGURE 4a — Model score by psychotropic medication type
+Each medication group compared to Antidepressants (Welch's t-test, two-sided)
+════════════════════════════════════════════════════════════════════════
+
+  No Psychotropic (Control)  vs  Antidepressants
+    N = 3151 vs 679    p = 3.446241e-143    Cohen's d = -1.6413
+
+  Benzodiazepines  vs  Antidepressants
+    N = 143 vs 679    p = 1.707966e-19    Cohen's d = -0.8676
+
+  Antipsychotics  vs  Antidepressants
+    N = 11 vs 679    p = 1.071292e-02    Cohen's d = -0.8175
+
+  Anticonvulsants  vs  Antidepressants
+    N = 94 vs 679    p = 5.131586e-26    Cohen's d = -1.1696
+
+  Hypnotics  vs  Antidepressants
+    N = 82 vs 679    p = 8.182670e-28    Cohen's d = -1.2869
+
+  Anticholinergics  vs  Antidepressants
+    N = 357 vs 679    p = 5.528420e-96    Cohen's d = -1.3875
+
+
+════════════════════════════════════════════════════════════════════════
+FIGURE 4b — Model score by antidepressant co-therapy
+Each cohort compared to Controls (Welch's t-test, two-sided)
+════════════════════════════════════════════════════════════════════════
+
+  Single Antidepressant  vs  Controls
+    N = 665 vs 3649    p = 6.952867e-125    Cohen's d = +1.4834
+
+  Multi-Antidepressant  vs  Controls
+    N = 69 vs 3649    p = 6.160642e-25    Cohen's d = +2.4088
+
+  Antidep + Benzodiazepine  vs  Controls
+    N = 103 vs 3649    p = 4.959693e-31    Cohen's d = +2.0653
+
+  Antidep + Anticonvulsant  vs  Controls
+    N = 66 vs 3649    p = 3.131460e-15    Cohen's d = +1.6164
+
+  Antidep + Antipsychotic  vs  Controls
+    N = 31 vs 3649    p = 4.700176e-12    Cohen's d = +2.4115
+
+  Antidep + Hypnotic  vs  Controls
+    N = 32 vs 3649    p = 4.066369e-10    Cohen's d = +1.9963
+
+
+════════════════════════════════════════════════════════════════════════
+FIGURE 4c — Model score by OSA severity
+════════════════════════════════════════════════════════════════════════
+
+  Primary: Control vs Antidepressant per OSA bin
+────────────────────────────────────────────────────────────────────────
+  Normal: Control vs Antidepressant
+    N = 1880 vs 301    p = 2.098695e-67    Cohen's d = -1.6496
+
+  Mild OSA: Control vs Antidepressant
+    N = 1682 vs 196    p = 1.284750e-46    Cohen's d = -1.7614
+
+  Moderate OSA: Control vs Antidepressant
+    N = 927 vs 140    p = 1.693715e-33    Cohen's d = -1.7442
+
+  Severe OSA: Control vs Antidepressant
+    N = 601 vs 100    p = 2.688462e-23    Cohen's d = -1.5970
+
+
+  Secondary: Within Antidepressant group (vs Normal Antidep)
+────────────────────────────────────────────────────────────────────────
+  Mild OSA Antidep vs Normal Antidep
+    N = 196 vs 301    p = 4.990008e-01    Cohen's d = -0.0618
+
+  Moderate OSA Antidep vs Normal Antidep
+    N = 140 vs 301    p = 8.308442e-01    Cohen's d = -0.0218
+
+  Severe OSA Antidep vs Normal Antidep
+    N = 100 vs 301    p = 7.136896e-01    Cohen's d = -0.0415
+
+
+  Secondary: Antidepressant OSA bins vs Normal Control
+────────────────────────────────────────────────────────────────────────
+  Mild OSA Antidep vs Normal Control
+    N = 196 vs 1880    p = 1.237641e-44    Cohen's d = +1.6376
+
+  Moderate OSA Antidep vs Normal Control
+    N = 140 vs 1880    p = 1.626056e-32    Cohen's d = +1.6556
+
+  Severe OSA Antidep vs Normal Control
+    N = 100 vs 1880    p = 5.872091e-25    Cohen's d = +1.7105
+
+
+════════════════════════════════════════════════════════════════════════
+FIGURE 4d — Model score by BMI
+════════════════════════════════════════════════════════════════════════
+
+  Primary: Control vs Antidepressant per BMI bin
+────────────────────────────────────────────────────────────────────────
+  BMI <18.5: Control vs Antidepressant
+    N = 8 vs 4    p = 2.807329e-01    Cohen's d = -0.8714
+
+  BMI 18.5-25: Control vs Antidepressant
+    N = 1040 vs 130    p = 1.263673e-21    Cohen's d = -1.3137
+
+  BMI 25-30: Control vs Antidepressant
+    N = 1505 vs 213    p = 7.128102e-39    Cohen's d = -1.4199
+
+  BMI 30-35: Control vs Antidepressant
+    N = 612 vs 101    p = 1.643805e-21    Cohen's d = -1.5722
+
+  BMI 35-40: Control vs Antidepressant
+    N = 164 vs 60    p = 2.444545e-19    Cohen's d = -1.9702
+
+  BMI >40: Control vs Antidepressant
+    N = 120 vs 61    p = 9.538921e-17    Cohen's d = -1.7298
+
+
+  Secondary: Each BMI bin Control vs ALL Antidepressants
+────────────────────────────────────────────────────────────────────────
+  BMI <18.5 Control vs ALL Antidepressants
+    N = 8 vs 569    p = 4.638752e-05    Cohen's d = -1.6557
+
+  BMI 18.5-25 Control vs ALL Antidepressants
+    N = 1040 vs 569    p = 2.713535e-112    Cohen's d = -1.5523
+
+  BMI 25-30 Control vs ALL Antidepressants
+    N = 1505 vs 569    p = 6.654676e-111    Cohen's d = -1.5193
+
+  BMI 30-35 Control vs ALL Antidepressants
+    N = 612 vs 569    p = 9.778269e-109    Cohen's d = -1.5474
+
+  BMI 35-40 Control vs ALL Antidepressants
+    N = 164 vs 569    p = 9.568956e-57    Cohen's d = -1.3624
+
+  BMI >40 Control vs ALL Antidepressants
+    N = 120 vs 569    p = 1.987161e-42    Cohen's d = -1.3037
+
+
+  Secondary: Each BMI bin Antidepressant vs ALL Controls
+────────────────────────────────────────────────────────────────────────
+  BMI <18.5 Antidepressant vs ALL Controls
+    N = 4 vs 3449    p = 3.292523e-01    Cohen's d = +0.7569
+
+  BMI 18.5-25 Antidepressant vs ALL Controls
+    N = 130 vs 3449    p = 3.685915e-21    Cohen's d = +1.2825
+
+  BMI 25-30 Antidepressant vs ALL Controls
+    N = 213 vs 3449    p = 1.000614e-38    Cohen's d = +1.4186
+
+  BMI 30-35 Antidepressant vs ALL Controls
+    N = 101 vs 3449    p = 2.055152e-21    Cohen's d = +1.5426
+
+  BMI 35-40 Antidepressant vs ALL Controls
+    N = 60 vs 3449    p = 6.733844e-20    Cohen's d = +2.1782
+
+  BMI >40 Antidepressant vs ALL Controls
+    N = 61 vs 3449    p = 1.591053e-18    Cohen's d = +1.9952
+
+
+════════════════════════════════════════════════════════════════════════
+FIGURE 4e — Model score by depression severity (Zung Index, WSC cohort only)
+════════════════════════════════════════════════════════════════════════
+
+  Primary: Control vs Antidepressant per Zung bin
+────────────────────────────────────────────────────────────────────────
+  Zung <30: Control vs Antidepressant
+    N = 253 vs 28    p = 1.194096e-05    Cohen's d = -1.3288
+
+  Zung 30-40: Control vs Antidepressant
+    N = 1074 vs 187    p = 7.273248e-40    Cohen's d = -1.6026
+
+  Zung 40-50: Control vs Antidepressant
+    N = 553 vs 184    p = 3.983153e-39    Cohen's d = -1.5937
+
+  Zung 50-60: Control vs Antidepressant
+    N = 127 vs 114    p = 1.162262e-40    Cohen's d = -2.2658
+
+  Zung 60+: Control vs Antidepressant
+    N = 19 vs 25    p = 2.523527e-06    Cohen's d = -1.6163
+
+
+  Secondary: Each Zung bin Control vs ALL Antidepressants
+────────────────────────────────────────────────────────────────────────
+  Zung <30 Control vs ALL Antidepressants
+    N = 253 vs 538    p = 3.194851e-109    Cohen's d = -1.7446
+
+  Zung 30-40 Control vs ALL Antidepressants
+    N = 1074 vs 538    p = 1.044603e-124    Cohen's d = -1.7408
+
+  Zung 40-50 Control vs ALL Antidepressants
+    N = 553 vs 538    p = 8.386383e-123    Cohen's d = -1.7407
+
+  Zung 50-60 Control vs ALL Antidepressants
+    N = 127 vs 538    p = 3.218311e-59    Cohen's d = -1.5518
+
+  Zung 60+ Control vs ALL Antidepressants
+    N = 19 vs 538    p = 2.159870e-09    Cohen's d = -1.5188
+
+
+  Secondary: Each Zung bin Antidepressant vs ALL Controls
+────────────────────────────────────────────────────────────────────────
+  Zung <30 Antidepressant vs ALL Controls
+    N = 28 vs 2026    p = 1.269751e-05    Cohen's d = +1.3155
+
+  Zung 30-40 Antidepressant vs ALL Controls
+    N = 187 vs 2026    p = 1.599900e-39    Cohen's d = +1.5890
+
+  Zung 40-50 Antidepressant vs ALL Controls
+    N = 184 vs 2026    p = 1.001668e-38    Cohen's d = +1.5797
+
+  Zung 50-60 Antidepressant vs ALL Controls
+    N = 114 vs 2026    p = 3.242754e-42    Cohen's d = +2.4905
+
+  Zung 60+ Antidepressant vs ALL Controls
+    N = 25 vs 2026    p = 2.095890e-07    Cohen's d = +1.8284
+
+
+  Pearson correlations: Zung Index vs Model Score
+────────────────────────────────────────────────────────────────────────
+  Control (N=2026):  r = +0.0593,  p = 7.608880e-03
+  Antidepressant (N=538):  r = +0.1115,  p = 9.614375e-03
+  Overall (N=2564):  r = +0.2367,  p = 5.376097e-34
+

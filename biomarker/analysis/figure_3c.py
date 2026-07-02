@@ -18,7 +18,7 @@ from sklearn.metrics import roc_auc_score
 # Configuration
 INFERENCE_FILE = 'data/inference_v6emb_3920_all_dosagev2.csv'
 TAXONOMY_FILE = 'data/antidep_taxonomy_all_datasets_v6.csv'
-OUTPUT_FILE = 'biomarker/analysis/figure_4c.png'
+OUTPUT_FILE = 'biomarker/analysis/figure_3c.pdf'
 DOSAGE_COL = 'dosage_v2' if 'dosagev2' in INFERENCE_FILE else 'dosage'
 
 # Dosage binning configuration
@@ -163,8 +163,55 @@ def main():
     
     # Create visualization
     create_visualization(df_per_night, df_per_patient)
-    
+
+    write_source_data_xlsx(df_per_patient)
+
     print("\nAnalysis completed successfully!")
+
+
+def write_source_data_xlsx(df_per_patient):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    HEADER_FONT = Font(bold=True, color="FFFFFF")
+    SUB_FILL    = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    SUB_FONT    = Font(bold=True)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Dosage Analysis"
+
+    col_start = 1
+    for dose_label in DOSAGE_LABELS:
+        bin_vals = df_per_patient[
+            df_per_patient['Dosage (Proportion of Standard Dose)'] == dose_label
+        ]['pred'].round(3).values
+
+        if len(bin_vals) == 0:
+            continue
+
+        cell = ws.cell(row=1, column=col_start, value=f'Dosage: {dose_label}')
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal='center')
+
+        c = ws.cell(row=2, column=col_start, value='Model Score')
+        c.font = SUB_FONT
+        c.fill = SUB_FILL
+        c.alignment = Alignment(horizontal='center')
+
+        for ri, val in enumerate(bin_vals):
+            ws.cell(row=3 + ri, column=col_start, value=float(val))
+
+        ws.column_dimensions[get_column_letter(col_start)].width = 20
+        col_start += 2  # 1 data col + 1 blank separator
+
+    out_path = os.path.join(os.path.dirname(OUTPUT_FILE), 'figure_3c_source_data.xlsx')
+    wb.save(out_path)
+    print(f'Saved {out_path}')
+
 
 if __name__ == "__main__":
     main()

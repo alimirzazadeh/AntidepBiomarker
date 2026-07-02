@@ -4,7 +4,9 @@ import os
 from ipdb import set_trace as bp
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind as _ttest_ind_base
+def ttest_ind(a, b, equal_var=False, **kwargs):  # Welch's by default
+    return _ttest_ind_base(a, b, equal_var=equal_var, **kwargs)
 import sys 
 sys.path.append('../')
 font_size = 13
@@ -173,7 +175,7 @@ def generate_osa_figure(save=True, ax=None):
     if save:
         plt.tight_layout()
         plt.savefig('osa_analysis_overall_v2.png', dpi=300, bbox_inches='tight')
-    return ax
+    return ax, df_plot[['osa_group', 'Group', 'pred']]
 
 
 if __name__ == '__main__':

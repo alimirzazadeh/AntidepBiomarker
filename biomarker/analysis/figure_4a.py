@@ -367,46 +367,47 @@ def create_visualization(groups, save_path=None, ax=None, save=True):
     if save:
         plt.tight_layout()
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    return ax
+    return ax, df_viz
 
 def generate_other_medications_figure(save=True, ax=None):
     """Main analysis pipeline."""
     print("Loading and preprocessing data...")
     df = load_and_preprocess_data()
-    
+
     print("Adding taxonomy data...")
     df = add_taxonomy_data(df)
-    
+
     print("Processing medication data...")
     df_mros_meds = process_mros_medications()
     df_wsc_meds = process_wsc_medications()
-    
+
     print("Processing MIT medication data...")
     df_mit_meds = process_mit_medications()
-    
+
     # Combine medication data
     df_other = pd.concat([df_mros_meds, df_wsc_meds, df_mit_meds])
 
     df = df.merge(df_other, on='filename', how='inner')
     df = df[['filename', 'taxonomy', 'pred', 'pid', 'label', 'benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']].copy()
-    
+
     df = df.groupby(['pid',  'label','benzos', 'antipsycho', 'convuls', 'hypnotics', 'anticholinergics', 'stimulants','dataset']).agg({'pred': 'mean'}).reset_index()
     print(df[df['dataset'] == 'mros'].shape[0])
     print(df[df['dataset'] == 'wsc'].shape[0])
     print(df[df['dataset'] == 'rf'].shape[0])
     print('Total merged data: ', df.shape[0])
-    
+
     print("Extracting medication groups...")
     groups = extract_medication_groups(df)
-    
+
     print("Creating visualization...")
     save_path = 'biomarker/analysis/figure_4a.png'
     if save:
-        create_visualization(groups, save_path=save_path, save=True)
+        ax, df_viz = create_visualization(groups, save_path=save_path, save=True)
     else:
-        create_visualization(groups, save_path=None, ax=ax, save=False)
+        ax, df_viz = create_visualization(groups, save_path=None, ax=ax, save=False)
 
     print("Analysis completed successfully!")
+    return ax, df_viz
 
 if __name__ == "__main__":
     generate_other_medications_figure(save=True)

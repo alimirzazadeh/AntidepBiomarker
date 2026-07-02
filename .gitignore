@@ -1,10 +1,15 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+source_data/
 *$py.class
 .DS_Store
 # C extensions
+*.zip
 *.so
+*.pdf
+*.xlsx
+biomarker/inference/
 data/
 # Distribution / packaging
 .Python

@@ -10,6 +10,9 @@ from scipy import stats
 import dataframe_image as dfi
 import sys 
 import matplotlib.patches as mpatches
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
 SIMULATED = False
 MASTER_DATASET = False
 
@@ -38,9 +41,35 @@ def calculate_pval_effect_size(x,y,equal_var=False):
         sp=np.sqrt((np.var(x,ddof=1)+np.var(y,ddof=1))/2)
     return p,md/sp
 
-import matplotlib.pyplot as plt 
+def compute_boxplot_stats(arr, label):
+    """Return a dict of descriptive box-and-whisker statistics for one group."""
+    arr = np.array(arr)
+    q1  = np.percentile(arr, 25)
+    med = np.percentile(arr, 50)
+    q3  = np.percentile(arr, 75)
+    iqr = q3 - q1
+    lower_fence = q1 - 1.5 * iqr
+    upper_fence  = q3 + 1.5 * iqr
+    lower_whisker = arr[arr >= lower_fence].min()
+    upper_whisker = arr[arr <= upper_fence].max()
+    return {
+        'label':         label,
+        'N':             len(arr),
+        'min':           arr.min(),
+        'max':           arr.max(),
+        'lower_whisker': lower_whisker,
+        'Q1_25th':       q1,
+        'median_50th':   med,
+        'Q3_75th':       q3,
+        'upper_whisker': upper_whisker,
+    }
+
+
+import matplotlib.pyplot as plt
 if True:
     fig, ax = plt.subplots(2, 2, figsize=(6.5, 4))
+    figure_3a_stats = []   # accumulate per-subplot stats for the txt file
+    figure_3a_raw_data = {}  # raw data points for xlsx export
     for i, name in enumerate(['rem_latency', 'sws_duration', 'rem_duration', 'sleep_efficiency']):
         x1 = control_df[name + '_gt'] / 2
         x2 = control_df[name + '_pred'] / 2
@@ -51,18 +80,54 @@ if True:
             y1 = 2 * y1 
             x2 = 2 * x2 
             y2 = 2 * y2 
-        maskx = ~np.isnan(x1) & ~np.isnan(x2) 
-        masky = ~np.isnan(y1) & ~np.isnan(y2) 
+        maskx = ~np.isnan(x1) & ~np.isnan(x2)
+        masky = ~np.isnan(y1) & ~np.isnan(y2)
         x1 = x1[maskx]
         x2 = x2[maskx]
         y1 = y1[masky]
         y2 = y2[masky]
-        
+
+        figure_3a_raw_data[name] = {
+            'EEG Control':                     np.array(x1),
+            'EEG Antidepressant':              np.array(y1),
+            'AI (Respiration) Control':        np.array(x2),
+            'AI (Respiration) Antidepressant': np.array(y2),
+        }
+
         # Calculate p-values and effect sizes for annotations
         pval_gt, effect_size_gt = calculate_pval_effect_size(x1, y1)
         pval_pred, effect_size_pred = calculate_pval_effect_size(x2, y2)
         print(name, 'GT', pval_gt, effect_size_gt)
         print(name, 'Pred', pval_pred, effect_size_pred)
+
+        # Collect stats for Figure_3a.txt
+        figure_3a_stats.append({
+            'metric': name,
+            'groups': [
+                compute_boxplot_stats(x1, 'Expert Annotated (EEG) – Control'),
+                compute_boxplot_stats(y1, 'Expert Annotated (EEG) – Antidepressant'),
+                compute_boxplot_stats(x2, 'AI Predicted (Respiration) – Control'),
+                compute_boxplot_stats(y2, 'AI Predicted (Respiration) – Antidepressant'),
+            ],
+            'comparisons': [
+                {
+                    'comparison': 'Expert Annotated (EEG): Control vs Antidepressant',
+                    'test':       'Independent samples t-test (Welch\'s; unequal variances assumed)',
+                    'sides':      'Two-sided',
+                    'adjustment': 'None',
+                    'p_value':    pval_gt,
+                    'cohens_d':   effect_size_gt,
+                },
+                {
+                    'comparison': 'AI Predicted (Respiration): Control vs Antidepressant',
+                    'test':       'Independent samples t-test (Welch\'s; unequal variances assumed)',
+                    'sides':      'Two-sided',
+                    'adjustment': 'None',
+                    'p_value':    pval_pred,
+                    'cohens_d':   effect_size_pred,
+                },
+            ],
+        })
         
         # Create data for seaborn boxplot
         data = []
@@ -185,11 +250,66 @@ if True:
     ax[1, 1].set_yticklabels(ax[1, 1].get_yticklabels(), fontsize=FONT_SIZE)
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.36)
-    plt.savefig('Figure_3a.png', dpi=300)
+    plt.savefig('Figure_3a.pdf')
+
+    # ── Write Figure_3a.txt ──────────────────────────────────────────────────
+    with open('Figure_3a.txt', 'w') as f:
+        f.write('Figure_3a – Box-plot statistics, statistical tests, and effect sizes\n')
+        f.write('=' * 72 + '\n\n')
+        f.write('FIGURE DESCRIPTION\n')
+        f.write('  2×2 grid of box plots. Each subplot shows four groups:\n')
+        f.write('    (1) Expert Annotated (EEG) – Control\n')
+        f.write('    (2) Expert Annotated (EEG) – Antidepressant\n')
+        f.write('    (3) AI Predicted (Respiration) – Control\n')
+        f.write('    (4) AI Predicted (Respiration) – Antidepressant\n')
+        f.write('  Outlier fliers are hidden (showfliers=False).\n')
+        f.write('  Whiskers extend to the most extreme observed value within\n')
+        f.write('  1.5 × IQR of the box edge (Tukey convention).\n\n')
+
+        for entry in figure_3a_stats:
+            metric_label = (entry['metric'].replace('_', ' ').title()
+                            .replace('Rem Latency', 'REM Latency')
+                            .replace('Sws Duration', 'SWS Duration')
+                            .replace('Rem Duration', 'REM Duration')
+                            .replace('Sleep Efficiency', 'Sleep Efficiency'))
+            f.write('─' * 72 + '\n')
+            f.write(f'METRIC: {metric_label}  (raw field: {entry["metric"]})\n')
+            f.write('─' * 72 + '\n\n')
+
+            f.write('  Box-plot statistics per group\n')
+            f.write('  ' + '-' * 68 + '\n')
+            header = f'  {"Group":<45} {"N":>5} {"Min":>8} {"Whisker↓":>10} {"Q1(25%)":>9} {"Median":>8} {"Q3(75%)":>9} {"Whisker↑":>10} {"Max":>8}\n'
+            f.write(header)
+            f.write('  ' + '-' * 68 + '\n')
+            for g in entry['groups']:
+                f.write(
+                    f'  {g["label"]:<45} {g["N"]:>5} '
+                    f'{g["min"]:>8.3f} {g["lower_whisker"]:>10.3f} '
+                    f'{g["Q1_25th"]:>9.3f} {g["median_50th"]:>8.3f} '
+                    f'{g["Q3_75th"]:>9.3f} {g["upper_whisker"]:>10.3f} '
+                    f'{g["max"]:>8.3f}\n'
+                )
+            f.write('\n')
+
+            f.write('  Statistical comparisons\n')
+            for cmp in entry['comparisons']:
+                f.write('  ' + '-' * 68 + '\n')
+                f.write(f'  Comparison  : {cmp["comparison"]}\n')
+                f.write(f'  Test        : {cmp["test"]}\n')
+                f.write(f'  Sides       : {cmp["sides"]}\n')
+                f.write(f'  Adjustment  : {cmp["adjustment"]}\n')
+                f.write(f'  p-value     : {cmp["p_value"]:.6e}\n')
+                f.write(f'  Effect size : Cohen\'s d = {cmp["cohens_d"]:.4f}  '
+                        f'(pooled SD = sqrt(mean of the two sample variances);\n'
+                        f'                positive d → first group > second group)\n')
+            f.write('\n')
+
+    print('Saved Figure_3a.txt')
 
 ## now get the correlation between the ground truth and predicted features 
 
-if True: 
+if True:
+    figure_3b_raw_data = {}  # raw data points for xlsx export
     # Create lists to store results
     features = []
     control_correlations = []
@@ -204,10 +324,17 @@ if True:
         x2 = x2[maskx]
         y1 = antidep_df[name + '_gt']
         y2 = antidep_df[name + '_pred']
-        masky = ~np.isnan(y1) & ~np.isnan(y2) 
+        masky = ~np.isnan(y1) & ~np.isnan(y2)
         y1 = y1[masky]
         y2 = y2[masky]
-        
+
+        figure_3b_raw_data[name] = {
+            'ctrl_gt':   np.array(x1),
+            'ctrl_pred': np.array(x2),
+            'ant_gt':    np.array(y1),
+            'ant_pred':  np.array(y2),
+        }
+
         # Calculate correlations
         control_corr = pearsonr(x1, x2)[0]
         antidep_corr = pearsonr(y1, y2)[0]
@@ -259,6 +386,148 @@ if True:
                          .hide(axis="index")  # hide index if not needed
 
     # Save as PNG
-    dfi.export(styled_df, "Figure_3b.png", dpi=600, fontsize=FONT_SIZE) ## increase the resolution 
-    
+    dfi.export(styled_df, "Figure_3b.png", dpi=600, fontsize=FONT_SIZE) ## increase the resolution
 
+    # ── Write Figure_3b.txt ──────────────────────────────────────────────────
+    with open('Figure_3b.txt', 'w') as f:
+        f.write('Figure_3b – Pearson correlation statistics (GT vs AI-predicted features)\n')
+        f.write('=' * 72 + '\n\n')
+        f.write('FIGURE DESCRIPTION\n')
+        f.write('  Table of Pearson r between expert-annotated (ground-truth) and\n')
+        f.write('  AI-predicted (respiration-derived) sleep features, computed\n')
+        f.write('  separately for the Control and Antidepressant groups.\n\n')
+        f.write('  Statistical test : Pearson product-moment correlation\n')
+        f.write('                     (scipy.stats.pearsonr, two-sided)\n')
+        f.write('  Multiple comparisons : No adjustment applied\n\n')
+
+        # Re-derive N values (they are masked above; reuse the per-feature masks)
+        f.write('─' * 72 + '\n')
+        header = f'  {"Feature":<30} {"Group":<15} {"N":>5} {"Pearson r":>10} {"p-value":>14}\n'
+        f.write(header)
+        f.write('  ' + '-' * 68 + '\n')
+
+        feature_names_raw = ['rem_latency', 'sws_duration', 'rem_duration', 'sleep_efficiency']
+        for feat_raw, feat_label, r_ctrl, p_ctrl, r_ant, p_ant in zip(
+            feature_names_raw, features,
+            control_correlations, control_pvalues,
+            antidep_correlations, antidep_pvalues,
+        ):
+            # Recompute N using the same masking logic
+            xg = control_df[feat_raw + '_gt'];  xp = control_df[feat_raw + '_pred']
+            n_ctrl = int((~np.isnan(xg) & ~np.isnan(xp)).sum())
+            yg = antidep_df[feat_raw + '_gt']; yp = antidep_df[feat_raw + '_pred']
+            n_ant  = int((~np.isnan(yg) & ~np.isnan(yp)).sum())
+
+            f.write(f'  {feat_label:<30} {"Control":<15} {n_ctrl:>5} {r_ctrl:>10.4f} {p_ctrl:>14.6e}\n')
+            f.write(f'  {"" :<30} {"Antidepressant":<15} {n_ant:>5} {r_ant:>10.4f} {p_ant:>14.6e}\n')
+        f.write('─' * 72 + '\n')
+
+    print('Saved Figure_3b.txt')
+
+# ── Write Figure_3ab_source_data.xlsx ────────────────────────────────────────
+_HEADER_FILL    = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+_HEADER_FONT    = Font(bold=True, color="FFFFFF")
+_SUBHEADER_FILL = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+_SUBHEADER_FONT = Font(bold=True)
+
+wb = Workbook()
+
+# ── Sheet 1: Figure 3a ───────────────────────────────────────────────────────
+ws3a = wb.active
+ws3a.title = "Figure 3a"
+
+_METRIC_LABELS_3A = {
+    'rem_latency':      'Fig 3a (top-left): REM Latency (minutes)',
+    'sws_duration':     'Fig 3a (top-right): SWS Duration (minutes)',
+    'rem_duration':     'Fig 3a (bottom-left): REM Duration (minutes)',
+    'sleep_efficiency': 'Fig 3a (bottom-right): Sleep Efficiency (proportion)',
+}
+_GROUP_HEADERS_3A = [
+    'EEG Control',
+    'EEG Antidepressant',
+    'AI (Respiration) Control',
+    'AI (Respiration) Antidepressant',
+]
+
+col_start = 1
+for _metric in ['rem_latency', 'sws_duration', 'rem_duration', 'sleep_efficiency']:
+    _title = _METRIC_LABELS_3A[_metric]
+    _data  = figure_3a_raw_data[_metric]
+
+    # Row 1: title spanning 4 columns
+    _cell = ws3a.cell(row=1, column=col_start, value=_title)
+    _cell.font = _HEADER_FONT
+    _cell.fill = _HEADER_FILL
+    _cell.alignment = Alignment(horizontal='center', vertical='center')
+    ws3a.merge_cells(start_row=1, start_column=col_start, end_row=1, end_column=col_start + 3)
+
+    # Row 2: group headers
+    for _j, _gh in enumerate(_GROUP_HEADERS_3A):
+        _c = ws3a.cell(row=2, column=col_start + _j, value=_gh)
+        _c.font = _SUBHEADER_FONT
+        _c.fill = _SUBHEADER_FILL
+        _c.alignment = Alignment(horizontal='center')
+
+    # Rows 3+: individual data points (rounded to 3 decimal places)
+    _arrays = [_data[_gh] for _gh in _GROUP_HEADERS_3A]
+    _max_n  = max(len(_a) for _a in _arrays)
+    for _ri in range(_max_n):
+        for _j, _arr in enumerate(_arrays):
+            _val = round(float(_arr[_ri]), 3) if _ri < len(_arr) else None
+            ws3a.cell(row=3 + _ri, column=col_start + _j, value=_val)
+
+    for _j in range(4):
+        ws3a.column_dimensions[get_column_letter(col_start + _j)].width = 30
+
+    col_start += 5  # 4 data cols + 1 blank separator
+
+# ── Sheet 2: Figure 3b ───────────────────────────────────────────────────────
+ws3b = wb.create_sheet("Figure 3b")
+
+_METRIC_LABELS_3B = {
+    'rem_latency':      'Fig 3b: REM Latency',
+    'sws_duration':     'Fig 3b: SWS Duration',
+    'rem_duration':     'Fig 3b: REM Duration',
+    'sleep_efficiency': 'Fig 3b: Sleep Efficiency',
+}
+_GROUP_HEADERS_3B = [
+    'EEG (GT) – Control',
+    'AI Predicted – Control',
+    'EEG (GT) – Antidepressant',
+    'AI Predicted – Antidepressant',
+]
+
+col_start = 1
+for _feat in ['rem_latency', 'sws_duration', 'rem_duration', 'sleep_efficiency']:
+    _title = _METRIC_LABELS_3B[_feat]
+    _fd    = figure_3b_raw_data[_feat]
+    _arrays = [_fd['ctrl_gt'], _fd['ctrl_pred'], _fd['ant_gt'], _fd['ant_pred']]
+
+    # Row 1: title spanning 4 columns
+    _cell = ws3b.cell(row=1, column=col_start, value=_title)
+    _cell.font = _HEADER_FONT
+    _cell.fill = _HEADER_FILL
+    _cell.alignment = Alignment(horizontal='center', vertical='center')
+    ws3b.merge_cells(start_row=1, start_column=col_start, end_row=1, end_column=col_start + 3)
+
+    # Row 2: group headers
+    for _j, _gh in enumerate(_GROUP_HEADERS_3B):
+        _c = ws3b.cell(row=2, column=col_start + _j, value=_gh)
+        _c.font = _SUBHEADER_FONT
+        _c.fill = _SUBHEADER_FILL
+        _c.alignment = Alignment(horizontal='center')
+
+    # Rows 3+: individual data points (rounded to 3 decimal places)
+    _max_n = max(len(_a) for _a in _arrays)
+    for _ri in range(_max_n):
+        for _j, _arr in enumerate(_arrays):
+            _val = round(float(_arr[_ri]), 3) if _ri < len(_arr) else None
+            ws3b.cell(row=3 + _ri, column=col_start + _j, value=_val)
+
+    for _j in range(4):
+        ws3b.column_dimensions[get_column_letter(col_start + _j)].width = 28
+
+    col_start += 5  # 4 data cols + 1 blank separator
+
+wb.save('Figure_3ab_source_data.xlsx')
+print('Saved Figure_3ab_source_data.xlsx')

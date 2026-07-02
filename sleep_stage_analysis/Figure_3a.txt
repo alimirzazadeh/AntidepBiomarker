@@ -1,0 +1,137 @@
+Figure_3a – Box-plot statistics, statistical tests, and effect sizes
+========================================================================
+
+FIGURE DESCRIPTION
+  2×2 grid of box plots. Each subplot shows four groups:
+    (1) Expert Annotated (EEG) – Control
+    (2) Expert Annotated (EEG) – Antidepressant
+    (3) AI Predicted (Respiration) – Control
+    (4) AI Predicted (Respiration) – Antidepressant
+  Outlier fliers are hidden (showfliers=False).
+  Whiskers extend to the most extreme observed value within
+  1.5 × IQR of the box edge (Tukey convention).
+
+────────────────────────────────────────────────────────────────────────
+METRIC: REM Latency  (raw field: rem_latency)
+────────────────────────────────────────────────────────────────────────
+
+  Box-plot statistics per group
+  --------------------------------------------------------------------
+  Group                                             N      Min   Whisker↓   Q1(25%)   Median   Q3(75%)   Whisker↑      Max
+  --------------------------------------------------------------------
+  Expert Annotated (EEG) – Control              11859    0.000      0.000    57.500   77.000   114.500    200.000  581.500
+  Expert Annotated (EEG) – Antidepressant        1280    0.000      0.000    91.000  141.250   220.125    411.000  642.500
+  AI Predicted (Respiration) – Control          11859    0.000      0.000    57.000   76.500   113.250    197.500  578.500
+  AI Predicted (Respiration) – Antidepressant    1280    0.000      0.000    89.500  142.500   216.125    404.000  491.000
+
+  Statistical comparisons
+  --------------------------------------------------------------------
+  Comparison  : Expert Annotated (EEG): Control vs Antidepressant
+  Test        : Independent samples t-test (Welch's; unequal variances assumed)
+  Sides       : Two-sided
+  Adjustment  : None
+  p-value     : 9.876385e-123
+  Effect size : Cohen's d = -0.8801  (pooled SD = sqrt(mean of the two sample variances);
+                positive d → first group > second group)
+  --------------------------------------------------------------------
+  Comparison  : AI Predicted (Respiration): Control vs Antidepressant
+  Test        : Independent samples t-test (Welch's; unequal variances assumed)
+  Sides       : Two-sided
+  Adjustment  : None
+  p-value     : 2.791917e-121
+  Effect size : Cohen's d = -0.8685  (pooled SD = sqrt(mean of the two sample variances);
+                positive d → first group > second group)
+
+────────────────────────────────────────────────────────────────────────
+METRIC: SWS Duration  (raw field: sws_duration)
+────────────────────────────────────────────────────────────────────────
+
+  Box-plot statistics per group
+  --------------------------------------------------------------------
+  Group                                             N      Min   Whisker↓   Q1(25%)   Median   Q3(75%)   Whisker↑      Max
+  --------------------------------------------------------------------
+  Expert Annotated (EEG) – Control              12043    0.000      0.000    15.500   43.500    76.000    166.500  269.500
+  Expert Annotated (EEG) – Antidepressant        1328    0.000      0.000     8.500   33.000    70.500    162.500  217.000
+  AI Predicted (Respiration) – Control          12043    0.000      0.000    26.500   48.000    67.500    128.500  144.500
+  AI Predicted (Respiration) – Antidepressant    1328    0.000      0.000    15.500   37.500    59.500    119.500  153.500
+
+  Statistical comparisons
+  --------------------------------------------------------------------
+  Comparison  : Expert Annotated (EEG): Control vs Antidepressant
+  Test        : Independent samples t-test (Welch's; unequal variances assumed)
+  Sides       : Two-sided
+  Adjustment  : None
+  p-value     : 3.577304e-06
+  Effect size : Cohen's d = 0.1356  (pooled SD = sqrt(mean of the two sample variances);
+                positive d → first group > second group)
+  --------------------------------------------------------------------
+  Comparison  : AI Predicted (Respiration): Control vs Antidepressant
+  Test        : Independent samples t-test (Welch's; unequal variances assumed)
+  Sides       : Two-sided
+  Adjustment  : None
+  p-value     : 1.315066e-22
+  Effect size : Cohen's d = 0.2924  (pooled SD = sqrt(mean of the two sample variances);
+                positive d → first group > second group)
+
+────────────────────────────────────────────────────────────────────────
+METRIC: REM Duration  (raw field: rem_duration)
+────────────────────────────────────────────────────────────────────────
+
+  Box-plot statistics per group
+  --------------------------------------------------------------------
+  Group                                             N      Min   Whisker↓   Q1(25%)   Median   Q3(75%)   Whisker↑      Max
+  --------------------------------------------------------------------
+  Expert Annotated (EEG) – Control              12043    0.000      0.000    53.000   71.500    90.000    145.000  190.000
+  Expert Annotated (EEG) – Antidepressant        1328    0.000      0.000    40.500   60.750    85.000    150.500  245.000
+  AI Predicted (Respiration) – Control          12043    0.000      7.500    61.500   79.000    97.500    151.000  226.000
+  AI Predicted (Respiration) – Antidepressant    1328    0.000      0.000    46.000   67.000    89.125    152.500  238.000
+
+  Statistical comparisons
+  --------------------------------------------------------------------
+  Comparison  : Expert Annotated (EEG): Control vs Antidepressant
+  Test        : Independent samples t-test (Welch's; unequal variances assumed)
+  Sides       : Two-sided
+  Adjustment  : None
+  p-value     : 9.573774e-20
+  Effect size : Cohen's d = 0.2836  (pooled SD = sqrt(mean of the two sample variances);
+                positive d → first group > second group)
+  --------------------------------------------------------------------
+  Comparison  : AI Predicted (Respiration): Control vs Antidepressant
+  Test        : Independent samples t-test (Welch's; unequal variances assumed)
+  Sides       : Two-sided
+  Adjustment  : None
+  p-value     : 1.917665e-32
+  Effect size : Cohen's d = 0.3708  (pooled SD = sqrt(mean of the two sample variances);
+                positive d → first group > second group)
+
+────────────────────────────────────────────────────────────────────────
+METRIC: Sleep Efficiency  (raw field: sleep_efficiency)
+────────────────────────────────────────────────────────────────────────
+
+  Box-plot statistics per group
+  --------------------------------------------------------------------
+  Group                                             N      Min   Whisker↓   Q1(25%)   Median   Q3(75%)   Whisker↑      Max
+  --------------------------------------------------------------------
+  Expert Annotated (EEG) – Control              12043    0.167      0.271     0.573    0.680     0.775      0.984    0.984
+  Expert Annotated (EEG) – Antidepressant        1328    0.220      0.299     0.607    0.724     0.815      0.968    0.968
+  AI Predicted (Respiration) – Control          12043    0.271      0.334     0.601    0.697     0.783      0.972    0.972
+  AI Predicted (Respiration) – Antidepressant    1328    0.301      0.385     0.643    0.744     0.823      0.962    0.962
+
+  Statistical comparisons
+  --------------------------------------------------------------------
+  Comparison  : Expert Annotated (EEG): Control vs Antidepressant
+  Test        : Independent samples t-test (Welch's; unequal variances assumed)
+  Sides       : Two-sided
+  Adjustment  : None
+  p-value     : 1.881229e-18
+  Effect size : Cohen's d = -0.2577  (pooled SD = sqrt(mean of the two sample variances);
+                positive d → first group > second group)
+  --------------------------------------------------------------------
+  Comparison  : AI Predicted (Respiration): Control vs Antidepressant
+  Test        : Independent samples t-test (Welch's; unequal variances assumed)
+  Sides       : Two-sided
+  Adjustment  : None
+  p-value     : 1.463231e-23
+  Effect size : Cohen's d = -0.2949  (pooled SD = sqrt(mean of the two sample variances);
+                positive d → first group > second group)
+

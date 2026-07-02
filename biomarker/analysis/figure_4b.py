@@ -8,7 +8,9 @@ from biomarker.analysis.figure_4a import process_mros_medications, process_wsc_m
 CSV_DIR = 'data/'
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind as _ttest_ind_base
+def ttest_ind(a, b, equal_var=False, **kwargs):  # Welch's by default
+    return _ttest_ind_base(a, b, equal_var=equal_var, **kwargs)
 
 ANONYMIZED = False 
 
@@ -187,7 +189,7 @@ def generate_cotherapy_analysis_figure(save=True, ax=None):
     if save:
         plt.tight_layout()
         plt.savefig('supplemental_figures/cotherapy_analysis_overall_v2.png', dpi=300, bbox_inches='tight')
-    return ax
+    return ax, df_plot[['cohort', 'pred']]
 
 
 if __name__ == '__main__':

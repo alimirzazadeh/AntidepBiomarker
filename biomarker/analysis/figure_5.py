@@ -19,12 +19,14 @@ from scipy.ndimage import gaussian_filter1d
 from ipdb import set_trace as bp 
 from tqdm import tqdm
 import matplotlib.dates as mdates
-
+from scipy.stats import ttest_ind
 # Configuration
 EXP_FOLDER = '../../data/'
 FILTERED = True
 FONT_SIZE = 14
 QUANTILE = 0.8
+# QUANTILE = 0.60
+
 
 
 def sigmoid(x):
@@ -104,7 +106,7 @@ def extract_patient_cohorts(df, key=None, FILTERED_THRESHOLD=None):
         df_xff = df_xff[df_xff[key] < FILTERED_THRESHOLD]
     # stable_period_neg_xff = df_xff[df_xff['date'] <= datetime.datetime(2021, 6, 10)]['pred']
     stable_period_pos_xff = df_xff[df_xff['date'] > datetime.datetime(2021, 7, 10)]['pred']
-    print(f"Stable period negative xff: {stable_period_pos_xff.std()}, total days: {len(stable_period_pos_xff)}")
+    print(f"Stable period positive xff: {stable_period_pos_xff.std()}, total days: {len(stable_period_pos_xff)}")
     
     # Apply additional filtering to remove edge effects (90 days from start/end)
     min_xff = df_xff['date'].min() + datetime.timedelta(days=90)
@@ -241,26 +243,56 @@ def plot_loading_curve(df, key, save_path, FILTERED_THRESHOLD=None):
     start2 = pd.Timestamp('2020-12-22')
     start3 = pd.Timestamp('2021-01-28')
     start = start1 - pd.Timedelta(days=23)
-    end = start3 + pd.Timedelta(days=21)
-    fig, ax = plt.subplots(figsize=(12, 4))
+    end = start3 + pd.Timedelta(days=45)
+    end_original = start3 + pd.Timedelta(days=21)
+    fig, ax = plt.subplots(4, 1, figsize=(8,12))
+    df1007 = df1007[df1007[key] < FILTERED_THRESHOLD]
+    
     section0 = df1007[(df1007['pid'] == '1007') & (df1007['date'] > start) &  (df1007['date'] <= start1)]  # Control
     section1 = df1007[(df1007['pid'] == '1007') & (df1007['date'] > start1) & (df1007['date'] <= start2)]   # 37.5mg
     section2 = df1007[(df1007['pid'] == '1007') & (df1007['date'] > start2) & (df1007['date'] <= start3)]  # 75mg
     section3 = df1007[(df1007['pid'] == '1007') & (df1007['date'] > start3) & (df1007['date'] < end)]     # 150mg
-    ax.scatter(section0[section0[key] < FILTERED_THRESHOLD]['date'], section0[section0[key] < FILTERED_THRESHOLD]['pred'], color='green', label='0mg')
-    ax.scatter(section1[section1[key] < FILTERED_THRESHOLD]['date'], section1[section1[key] < FILTERED_THRESHOLD]['pred'], color='orange', label='37.5mg')
-    ax.scatter(section2[section2[key] < FILTERED_THRESHOLD]['date'], section2[section2[key] < FILTERED_THRESHOLD]['pred'], color='red', label='75mg')
-    ax.scatter(section3[section3[key] < FILTERED_THRESHOLD]['date'], section3[section3[key] < FILTERED_THRESHOLD]['pred'], color='maroon', label='150mg')
+    ax[0].scatter(section0['date'], section0['pred'], color='green', label='0mg')
+    ax[0].scatter(section1['date'], section1['pred'], color='orange', label='37.5mg')
+    ax[0].scatter(section2['date'], section2['pred'], color='red', label='75mg')
+    ax[0].scatter(section3['date'], section3['pred'], color='maroon', label='150mg')
     # ax.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=0))  # every Monday
 
     # 2. Set major ticks at the start of each month (for labels)
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%m"))  # e.g. "Jan 2024"
-    ax.set_xlabel('Month')
-    ax.set_ylabel('Model Score')
-    ax.set_ylim(0, 1)
-    ax.legend()
-    ax.set_title('Patient Loading Venlafaxine (Not Thresholded)')
+    ax[0].xaxis.set_major_locator(mdates.MonthLocator())
+    ax[0].xaxis.set_major_formatter(mdates.DateFormatter("%m"))  # e.g. "Jan 2024"
+    ax[0].set_xlabel('Month')
+    ax[0].set_ylabel('Model Score')
+    ax[0].set_ylim(0, 1)
+    ax[0].legend()
+    ax[0].set_title('Patient Loading Venlafaxine (Not Thresholded)')
+    titles = ['75mg to 150mg', '37.5mg to 75mg', '37.5mg to 150mg']
+    dates = [[start3,start3], [start2, start2], [start2, start3]]
+    for x, (start, end) in enumerate([(section2, section3), (section1, section2), (section1, section3)]):
+        j = x + 1
+        start = start.copy().sort_values(by='date')
+        end = end.copy().sort_values(by='date')
+        window_sizes = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        pvalues = []
+        for window_size in window_sizes: 
+            if False:
+                subset_start = start[start['date'] > (dates[x][0] - pd.Timedelta(days=window_size))]
+                subset_end = end[end['date'] <= (dates[x][1] + pd.Timedelta(days=window_size))]
+            else:
+                subset_start = start.tail(window_size)
+                subset_end = end.head(window_size)
+                
+            print('Window size: ', window_size, 'Number of points: ', len(subset_start), len(subset_end), subset_start['date'].dt.strftime('%Y-%m-%d').values, subset_end['date'].dt.strftime('%Y-%m-%d').values)
+            pvalues.append(ttest_ind(subset_start['pred'], subset_end['pred']).pvalue)
+        ax[j].scatter(window_sizes, pvalues)
+        ax[j].set_xlabel('Window Size (days)')
+        ax[j].set_ylabel('p-value')
+        ax[j].set_title(titles[x])
+        ax[j].set_ylim(0, 0.3)
+        ax[j].set_xlim(0, 15)
+        ax[j].axhline(y=0.05, color='red', linestyle='--', linewidth=1)
+        ax[j].axhline(y=0.1, color='red', linestyle='--', linewidth=1)
+        ax[j].axvline(x=end_original, color='black', linestyle='--', linewidth=1)
     save_path = save_path.replace('.png', f'_{key}_{FILTERED_THRESHOLD}.png')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     ## put an X over the dots where bad_signal_time > 50
@@ -276,30 +308,30 @@ def main():
     ## OR: 
     # '0h_4h_TRIM_none', '0.25h_4h_TRIM_none', @ 60 , 0h_6h_TRIM_none @ 90, 80, 0h_3h_TRIM_none @ 30 
     
-    # for key in tqdm(['0h_4h_TRIM_left', '0h_4h_TRIM_right', '0h_4h_TRIM_both', '1h_4h_TRIM_none', '0.25h_4h_TRIM_left', '0.25h_4h_TRIM_right', '0.25h_4h_TRIM_both', '0.5h_4h_TRIM_left', '0.5h_4h_TRIM_right', '0.5h_4h_TRIM_both', '0.5h_4h_TRIM_none', '1h_4h_TRIM_left', '1h_4h_TRIM_right', '1h_4h_TRIM_both', ]):
-    #     print("Extracting patient cohorts...")
-    #     cohorts, titles, FILTERED_THRESHOLD = extract_patient_cohorts(df, key=key)
+    for key in tqdm(['0h_4h_TRIM_left', '0h_4h_TRIM_right', '0h_4h_TRIM_both', '1h_4h_TRIM_none', '0.25h_4h_TRIM_left', '0.25h_4h_TRIM_right', '0.25h_4h_TRIM_both', '0.5h_4h_TRIM_left', '0.5h_4h_TRIM_right', '0.5h_4h_TRIM_both', '0.5h_4h_TRIM_none', '1h_4h_TRIM_left', '1h_4h_TRIM_right', '1h_4h_TRIM_both', ]):
+        print("Extracting patient cohorts...")
+        cohorts, titles, FILTERED_THRESHOLD = extract_patient_cohorts(df, key=key)
         
-    #     # Print cohort information
-    #     print("\nPatient cohort summary:")
-    #     for i, (cohort, title) in enumerate(zip(cohorts, titles)):
-    #         date_range = f"{cohort['date'].min().strftime('%Y-%m-%d')} to {cohort['date'].max().strftime('%Y-%m-%d')}"
-    #         print(f"  {i+1}. {title}: {len(cohort)} observations ({date_range})")
+        # Print cohort information
+        print("\nPatient cohort summary:")
+        for i, (cohort, title) in enumerate(zip(cohorts, titles)):
+            date_range = f"{cohort['date'].min().strftime('%Y-%m-%d')} to {cohort['date'].max().strftime('%Y-%m-%d')}"
+            print(f"  {i+1}. {title}: {len(cohort)} observations ({date_range})")
         
-    #     print("\nCreating patient trajectory visualization...")
+        print("\nCreating patient trajectory visualization...")
 
-    #     save_path = os.path.join('filtered_figure/figure_5_v2_.png')
-    #     create_patient_trajectory_plot(cohorts, titles, save_path, key=key, FILTERED_THRESHOLD=FILTERED_THRESHOLD)
-    #     save_path = 'filtered_loading_curve/figure_5_v2_.png'
-    #     plot_loading_curve(df, key, save_path)
-    #     print("Analysis completed successfully!")
-    for key, FILTERED_THRESHOLD in tqdm([['0h_4h_TRIM_right',60]]): #, ['0h_4h_TRIM_both',60], ['0h_4h_TRIM_none',60], ['0.25h_4h_TRIM_none', 60], ['0h_6h_TRIM_none', 90],['0h_6h_TRIM_none', 80], ['0h_3h_TRIM_none', 30]]):
-        save_path = os.path.join('filtered_figure/figure_5_v2_.png')
-        cohorts, titles, _ = extract_patient_cohorts(df, key=key, FILTERED_THRESHOLD=FILTERED_THRESHOLD)
-        create_patient_trajectory_plot(cohorts, titles, save_path, key=key, FILTERED_THRESHOLD=FILTERED_THRESHOLD, disable_title=True)
+        # save_path = os.path.join('filtered_figure/figure_5_v2_.png')
+        # create_patient_trajectory_plot(cohorts, titles, save_path, key=key, FILTERED_THRESHOLD=FILTERED_THRESHOLD)
         save_path = 'filtered_loading_curve/figure_5_v2_.png'
-        plot_loading_curve(df, key, save_path, FILTERED_THRESHOLD=FILTERED_THRESHOLD)
+        plot_loading_curve(df, key, save_path)
         print("Analysis completed successfully!")
+    # for key, FILTERED_THRESHOLD in tqdm([['0h_4h_TRIM_right',60]]): #, ['0h_4h_TRIM_both',60], ['0h_4h_TRIM_none',60], ['0.25h_4h_TRIM_none', 60], ['0h_6h_TRIM_none', 90],['0h_6h_TRIM_none', 80], ['0h_3h_TRIM_none', 30]]):
+    #     save_path = os.path.join('filtered_figure/figure_5_v2_.png')
+    #     cohorts, titles, _ = extract_patient_cohorts(df, key=key, FILTERED_THRESHOLD=FILTERED_THRESHOLD)
+    #     create_patient_trajectory_plot(cohorts, titles, save_path, key=key, FILTERED_THRESHOLD=FILTERED_THRESHOLD, disable_title=True)
+    #     save_path = 'filtered_loading_curve/figure_5_v2_.png'
+    #     plot_loading_curve(df, key, save_path, FILTERED_THRESHOLD=FILTERED_THRESHOLD)
+    #     print("Analysis completed successfully!")
 
     print('done')
 

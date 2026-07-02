@@ -8,7 +8,9 @@ import numpy as np
 from ipdb import set_trace as bp
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind as _ttest_ind_base
+def ttest_ind(a, b, equal_var=False, **kwargs):  # Welch's by default
+    return _ttest_ind_base(a, b, equal_var=equal_var, **kwargs)
 from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 import scipy
@@ -239,7 +241,7 @@ def generate_mdd_confound_figure(save=True, ax=None):
     if save:
         plt.tight_layout()
         plt.savefig('check_mdd_confound_v3.png', dpi=300, bbox_inches='tight')
-    return ax
+    return ax, df_combined[['zung_index_bin', 'group', 'pred']]
 
 if __name__ == '__main__':
     generate_mdd_confound_figure(save=True)
