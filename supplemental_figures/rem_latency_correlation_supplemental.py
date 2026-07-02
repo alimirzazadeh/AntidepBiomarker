@@ -319,8 +319,6 @@ def write_source_data_xlsx(antidep_swa, antidep_beta, antidep_latency,
         ('SO + Beta', antidep_swa + antidep_beta, ctrl_swa + ctrl_beta),
     ]
 
-    stage_string = '_'.join([str(i) for i in WHICH_STAGE])
-
     for sheet_idx, (sheet_name, antidep_x, ctrl_x) in enumerate(panels):
         ws = wb.active if sheet_idx == 0 else wb.create_sheet(sheet_name)
         ws.title = sheet_name
@@ -351,7 +349,7 @@ def write_source_data_xlsx(antidep_swa, antidep_beta, antidep_latency,
             for j in range(2):
                 ws.column_dimensions[get_column_letter(col_start + j)].width = 22
 
-    out_path = f'PAPER_pred_powers_vs_rem_latency_{MAXVAL}epochs_{stage_string}_{SO_START}_{SO_END}hz_{BETA_START}_{BETA_END}hz_source_data.xlsx'
+    out_path = 'extended_figure_3.xlsx'
     wb.save(out_path)
     print(f'Saved {out_path}')
 
@@ -424,7 +422,7 @@ axs[2,1].set_ylim(-3,3)
 fig.suptitle('Predicted Powers vs REM Latency')
 stage_string = '_'.join([str(i) for i in WHICH_STAGE])
 
-plt.savefig(f'PAPER_pred_powers_vs_rem_latency_{MAXVAL}epochs_{stage_string}_{SO_START}_{SO_END}hz_{BETA_START}_{BETA_END}hz.png')
+plt.savefig('extended_figure_3.pdf')
 
 write_source_data_xlsx(
     antidep_swa, antidep_beta, antidep_latency,
