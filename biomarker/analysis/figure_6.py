@@ -348,8 +348,8 @@ def generate_figure_6(save=True):
 
     # ── layout ──
     fig = plt.figure(figsize=(6.5, 10))
-    gs  = gridspec.GridSpec(3, 2, figure=fig, height_ratios=[1.2, 1, 1],
-                            hspace=0.4, wspace=0.3)
+    gs  = gridspec.GridSpec(3, 2, figure=fig, height_ratios=[1, 1, 1],
+                            hspace=0.2, wspace=0.3)
     ax_6a  = fig.add_subplot(gs[0, 0])
     ax_6b  = fig.add_subplot(gs[0, 1])
     ax_box = fig.add_subplot(gs[1, :])
@@ -360,17 +360,17 @@ def generate_figure_6(save=True):
                           cmap='magma', s=8, point_frac=1.0, alpha=0.6,
                           overlay_points_frac=0.0, label='Score')
     ax_6a.set_facecolor('dimgray')
-    ax_6a.set_title('(a) Model Score', fontsize=FONT_SIZE)
+    ax_6a.set_title('TSNE Embedding Representation\nColored by Model Score', fontsize=FONT_SIZE)
 
     # ── 6b: t-SNE coloured by REM latency ──
     tsne_progression_plot(x_tsne, y_lat.values, ax=ax_6b, method='points',
                           cmap='magma', s=8, point_frac=1.0, alpha=0.6,
                           overlay_points_frac=0.0, label='Minutes')
     ax_6b.set_facecolor('dimgray')
-    ax_6b.set_title('(b) REM Latency', fontsize=FONT_SIZE)
+    ax_6b.set_title('TSNE Embedding Representation\nColored by REM Latency', fontsize=FONT_SIZE)
 
     # ── boxplot: REM latency vs model score ──
-    plot_binned_boxplots(y_lat_all.values * 2, y_score_all.values, 30, 240, ax=ax_box)
+    plot_binned_boxplots(y_lat_all.values, y_score_all.values, 30, 240, ax=ax_box)
     ax_box.tick_params(axis='both', labelsize=FONT_SIZE)
 
     # ── 6c: EEG power spectrum ──
@@ -383,9 +383,9 @@ def generate_figure_6(save=True):
     ax_6c.set_xlabel('Frequency (Hz)', fontsize=FONT_SIZE)
     ax_6c.set_ylabel('% Difference in Power\n(Antidep − Control)', fontsize=FONT_SIZE)
     ax_6c.set_xlim(0, 32)
+    ax_6c.set_xticks(np.arange(0, 33, 4))
     ax_6c.set_ylim(-5, 25)
     ax_6c.tick_params(axis='both', labelsize=FONT_SIZE)
-    ax_6c.set_title('(c) EEG Power Spectrum', fontsize=FONT_SIZE)
 
     if save:
         out = os.path.join(OUT_DIR, 'figure_6.pdf')
@@ -393,7 +393,7 @@ def generate_figure_6(save=True):
         print(f'Saved {out}')
 
     write_source_data_xlsx(x_tsne, y_score.values, y_lat.values, y_label.values,
-                           y_lat_all.values * 2, y_score_all.values,
+                           y_lat_all.values, y_score_all.values,
                            mean_diff, lower, upper)
     return fig
 
@@ -443,7 +443,7 @@ def write_source_data_xlsx(x_tsne, score, latency_half, label,
     for i in range(len(latency_half)):
         ws2.cell(row=3 + i, column=1, value=round(float(x_tsne[i, 0]), 4))
         ws2.cell(row=3 + i, column=2, value=round(float(x_tsne[i, 1]), 4))
-        ws2.cell(row=3 + i, column=3, value=round(float(latency_half[i] * 2), 2))
+        ws2.cell(row=3 + i, column=3, value=round(float(latency_half[i]), 2))
         ws2.cell(row=3 + i, column=4, value=int(label[i]))
 
     # ── Sheet 3: 6ab boxplot (raw data) ──

@@ -300,11 +300,68 @@ def calculate_cohort_metrics(PRED=False, NORM_POWER=True, LOGNORM_LATENCY=True, 
     return valbeta, valswa, val_latency
 
 
+def write_source_data_xlsx(antidep_swa, antidep_beta, antidep_latency,
+                           ctrl_swa, ctrl_beta, ctrl_latency):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    HEADER_FONT = Font(bold=True, color="FFFFFF")
+    SUB_FILL    = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    SUB_FONT    = Font(bold=True)
+
+    wb = Workbook()
+
+    panels = [
+        (f'SO ({SO_START}-{SO_END} Hz)', antidep_swa, ctrl_swa),
+        (f'Beta ({BETA_START}-{BETA_END} Hz)', antidep_beta, ctrl_beta),
+        ('SO + Beta', antidep_swa + antidep_beta, ctrl_swa + ctrl_beta),
+    ]
+
+    stage_string = '_'.join([str(i) for i in WHICH_STAGE])
+
+    for sheet_idx, (sheet_name, antidep_x, ctrl_x) in enumerate(panels):
+        ws = wb.active if sheet_idx == 0 else wb.create_sheet(sheet_name)
+        ws.title = sheet_name
+
+        for grp_idx, (group_label, x_vals, y_vals) in enumerate(
+            [('Antidepressant', antidep_x, antidep_latency),
+             ('Control',        ctrl_x,    ctrl_latency)]
+        ):
+            col_start = 1 + grp_idx * 3  # cols 1,4 with blank separator
+
+            cell = ws.cell(row=1, column=col_start, value=group_label)
+            cell.font = HEADER_FONT
+            cell.fill = HEADER_FILL
+            cell.alignment = Alignment(horizontal='center')
+            ws.merge_cells(start_row=1, start_column=col_start,
+                           end_row=1,   end_column=col_start + 1)
+
+            for j, sub_lbl in enumerate(['Power (Norm)', 'REM Latency (LogNorm)']):
+                c = ws.cell(row=2, column=col_start + j, value=sub_lbl)
+                c.font = SUB_FONT
+                c.fill = SUB_FILL
+                c.alignment = Alignment(horizontal='center')
+
+            for ri in range(len(x_vals)):
+                ws.cell(row=3 + ri, column=col_start,     value=round(float(x_vals[ri]), 6))
+                ws.cell(row=3 + ri, column=col_start + 1, value=round(float(y_vals[ri]), 6))
+
+            for j in range(2):
+                ws.column_dimensions[get_column_letter(col_start + j)].width = 22
+
+    out_path = f'PAPER_pred_powers_vs_rem_latency_{MAXVAL}epochs_{stage_string}_{SO_START}_{SO_END}hz_{BETA_START}_{BETA_END}hz_source_data.xlsx'
+    wb.save(out_path)
+    print(f'Saved {out_path}')
+
+
 valbeta, valswa, val_latency = calculate_cohort_metrics(PRED=True, NORM_POWER=True, LOGNORM_LATENCY=True, CONTROL=False, TREATMENT=True)
 
 text_y = 2.0
 fig,axs = plt.subplots(3,2,figsize=(8,12),sharex=True, sharey=True)
-valbeta, valswa, val_latency = calculate_cohort_metrics(PRED=True, NORM_POWER=True, LOGNORM_LATENCY=True, CONTROL=False, TREATMENT=True)
+antidep_beta, antidep_swa, antidep_latency = calculate_cohort_metrics(PRED=True, NORM_POWER=True, LOGNORM_LATENCY=True, CONTROL=False, TREATMENT=True)
+valbeta, valswa, val_latency = antidep_beta, antidep_swa, antidep_latency
 axs[0,0].scatter(valswa, val_latency,alpha=0.4)
 pearson_r = scipy.stats.pearsonr(valswa, val_latency)
 pval = pearson_r.pvalue
@@ -340,7 +397,8 @@ axs[1,0].set_xlabel('Predicted Power, Norm')
 axs[2,1].set_xlabel('Predicted Power, Norm')
 axs[0,1].set_xlabel('Predicted Power, Norm')
 axs[1,1].set_xlabel('Predicted Power, Norm')
-valbeta, valswa, val_latency = calculate_cohort_metrics(PRED=True, NORM_POWER=True, LOGNORM_LATENCY=True, CONTROL=True, TREATMENT=False)
+ctrl_beta, ctrl_swa, ctrl_latency = calculate_cohort_metrics(PRED=True, NORM_POWER=True, LOGNORM_LATENCY=True, CONTROL=True, TREATMENT=False)
+valbeta, valswa, val_latency = ctrl_beta, ctrl_swa, ctrl_latency
 axs[0,1].scatter(valswa, val_latency,alpha=0.05)
 pearson_r = scipy.stats.pearsonr(valswa, val_latency)
 pval = pearson_r.pvalue
@@ -366,7 +424,11 @@ axs[2,1].set_ylim(-3,3)
 fig.suptitle('Predicted Powers vs REM Latency')
 stage_string = '_'.join([str(i) for i in WHICH_STAGE])
 
-plt.savefig(f'pred_powers_vs_rem_latency_{MAXVAL}epochs_{stage_string}_{SO_START}_{SO_END}hz_{BETA_START}_{BETA_END}hz.png')
+plt.savefig(f'PAPER_pred_powers_vs_rem_latency_{MAXVAL}epochs_{stage_string}_{SO_START}_{SO_END}hz_{BETA_START}_{BETA_END}hz.png')
 
+write_source_data_xlsx(
+    antidep_swa, antidep_beta, antidep_latency,
+    ctrl_swa, ctrl_beta, ctrl_latency,
+)
 
 print('done')
