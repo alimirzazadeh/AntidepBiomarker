@@ -386,6 +386,63 @@ control_pwr_sleep_gt_norm = np.stack(control_pwr_sleep_gt_norm)
 
 
 
+def write_source_data_xlsx(antidep_pwr_sleep, control_pwr_sleep,
+                            antidep_pwr_sleep_gt_norm, control_pwr_sleep_gt_norm,
+                            antidep_pwr_sleep_l1, control_pwr_sleep_l1,
+                            out_path='check_reconstruction_error_source_data.xlsx'):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    HEADER_FONT = Font(bold=True, color="FFFFFF")
+
+    wb = Workbook()
+
+    # Sheet 1: individual-level L1 error (per-recording mean across frequency bins)
+    # Overall mean of both columns concatenated reproduces the individual-level L1 error.
+    ws = wb.active
+    ws.title = "Individual-level L1"
+
+    antidep_indiv = np.mean(antidep_pwr_sleep_l1, axis=1).round(6)
+    control_indiv = np.mean(control_pwr_sleep_l1, axis=1).round(6)
+
+    for j, (lbl, arr) in enumerate([("Antidepressant", antidep_indiv), ("Control", control_indiv)]):
+        c = ws.cell(row=1, column=j + 1, value=lbl)
+        c.font = HEADER_FONT
+        c.fill = HEADER_FILL
+        c.alignment = Alignment(horizontal='center')
+        for ri, val in enumerate(arr):
+            ws.cell(row=2 + ri, column=j + 1, value=float(val))
+        ws.column_dimensions[get_column_letter(j + 1)].width = 20
+
+    # Sheet 2: cohort-level (across-subject) mean power spectra, by frequency bin.
+    # L1 error (cohort level antidep) = mean(|Antidep GT Norm mean - Control Predicted mean|)
+    # L1 error (cohort level control) = mean(|Antidep Predicted mean - Control GT Norm mean|)
+    ws2 = wb.create_sheet("Cohort-level means")
+    freq_hz = np.arange(256) / 8.0
+
+    cols = [
+        ("Frequency (Hz)", freq_hz),
+        ("Antidepressant - Predicted (mean)", np.mean(antidep_pwr_sleep, axis=0)),
+        ("Antidepressant - Ground Truth Normalized (mean)", np.mean(antidep_pwr_sleep_gt_norm, axis=0)),
+        ("Control - Predicted (mean)", np.mean(control_pwr_sleep, axis=0)),
+        ("Control - Ground Truth Normalized (mean)", np.mean(control_pwr_sleep_gt_norm, axis=0)),
+    ]
+
+    for j, (lbl, arr) in enumerate(cols):
+        c = ws2.cell(row=1, column=j + 1, value=lbl)
+        c.font = HEADER_FONT
+        c.fill = HEADER_FILL
+        c.alignment = Alignment(horizontal='center')
+        for ri, val in enumerate(np.round(arr, 6)):
+            ws2.cell(row=2 + ri, column=j + 1, value=float(val))
+        ws2.column_dimensions[get_column_letter(j + 1)].width = 26
+
+    wb.save(out_path)
+    print(f'Saved {out_path}')
+
+
 # Calculate percent differences with bootstrap
 if True:
     whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
@@ -398,7 +455,10 @@ if True:
     l1_error_cohort_control = np.mean(np.abs(np.mean(antidep_pwr_sleep,0) - np.mean(control_pwr_sleep_gt_norm,0)))
     print('L1 error (cohort level antidep):', l1_error_cohort_antidep)
     print('L1 error (cohort level control):', l1_error_cohort_control)
-bp() 
+
+    write_source_data_xlsx(antidep_pwr_sleep, control_pwr_sleep,
+                            antidep_pwr_sleep_gt_norm, control_pwr_sleep_gt_norm,
+                            antidep_pwr_sleep_l1, control_pwr_sleep_l1)
 if True:
     FONT_SIZE = 12
     whole_sleep2, whole_sleep_lower, whole_sleep_upper = bootstrap_percent_difference(antidep_pwr_sleep, control_pwr_sleep, method='percent_diff')
@@ -443,5 +503,4 @@ if True:
     # ax[2].set_xlim(-0.01, 256.01)
     plt.savefig(f'check_reconstruction_error_v5_simplified.png', dpi=300, bbox_inches='tight')
     plt.close()
-bp() 
 print('done')
