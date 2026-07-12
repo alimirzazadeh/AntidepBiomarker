@@ -118,9 +118,12 @@ Run the corresponding inference script from the repository root. The output is a
 
 To apply the pipeline to new datasets:
 
-1. Format new inputs according to the anonymized examples in the `data/` directory.
-2. Place the formatted data in the appropriate location.
-3. Execute the desired analysis or inference script as follows:
+1. Model weights may be downloaded from:
+     a. https://www.dropbox.com/scl/fi/vzkt5m3btyhvmls2yogwh/classifier.pt?rlkey=2u5marq9fyf1fsglus4z0tj37&st=2kbi4mi2&dl=1
+     b. https://www.dropbox.com/scl/fi/mpmtcstampbqclicywr6q/encoder.pt?rlkey=xpfy3ilro34cbulmpwalyzt6c&st=eqgk5inr&dl=1
+2. Format new inputs according to the anonymized examples in the `data/` directory.
+3. Place the formatted data in the appropriate location.
+4. Execute the desired analysis or inference script as follows:
 
 ```
 cd biomarker/inference 
